@@ -1,0 +1,37 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
+
+      - name: Upload plugin DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: NINA.RtspTimelapse.Plugin
+          path: bin/Release/net8.0-windows7.0/NINA.RtspTimelapse.Plugin.dll
+
+# To publish to N.I.N.A.'s in-app Plugins tab, generate a manifest.json from the
+# built DLL (CreateManifest.ps1 in the nina.plugin.manifests repo, or copy its
+# GitHub Actions workflow from ./tools) and open a PR against
+# https://github.com/isbeorn/nina.plugin.manifests
