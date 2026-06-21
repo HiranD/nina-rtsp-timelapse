@@ -27,8 +27,22 @@
         <nina:SequenceBlockView DataContext="{Binding}" />
     </DataTemplate>
 
-    <!-- Create Timelapse Video (renders the newest session; no options) -->
+    <!-- Create Timelapse Video (renders the latest / started session; no options) -->
     <DataTemplate DataType="{x:Type local:CreateVideo}">
         <nina:SequenceBlockView DataContext="{Binding}" />
+    </DataTemplate>
+
+    <!-- Run Timelapse Capture (one block: start now; auto stop + optional video at sequence end) -->
+    <DataTemplate DataType="{x:Type local:RunTimelapse}">
+        <nina:SequenceBlockView DataContext="{Binding}">
+            <nina:SequenceBlockView.SequenceItemContent>
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox Content="Wait until capturing" VerticalAlignment="Center"
+                              IsChecked="{Binding WaitUntilCapturing}" />
+                    <CheckBox Content="Create video when finished" VerticalAlignment="Center"
+                              Margin="12,0,0,0" IsChecked="{Binding CreateVideoWhenDone}" />
+                </StackPanel>
+            </nina:SequenceBlockView.SequenceItemContent>
+        </nina:SequenceBlockView>
     </DataTemplate>
 </ResourceDictionary>
