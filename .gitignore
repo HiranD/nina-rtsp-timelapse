@@ -1,0 +1,25 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.user
+*.suo
+
+# Visual Studio
+.vs/
+*.vspscc
+*.vssscc
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+
+# Generated manifest artifacts
+manifest.json
+*.zip
