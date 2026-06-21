@@ -24,7 +24,7 @@ This plugin is a thin client over the RTSP Timelapse app's **local HTTP control 
 |---|---|---|
 | Start Timelapse Capture | `POST /capture/start` | No-op if already capturing. Optional *Wait until capturing*. |
 | Stop Timelapse Capture | `POST /capture/stop` | No-op if not capturing. |
-| Create Timelapse Video | `POST /video/create` | Optional *Date* (`YYYYMMDD`); blank = newest session. Fire-and-forget. |
+| Create Timelapse Video | `POST /video/create` | Renders the newest capture session. Fire-and-forget. |
 
 **Dock panel** (*RTSP Timelapse*, on the Imaging tab): live connection/version,
 capturing state, frame counts, uptime and errors, with manual Start/Stop/Create-Video
@@ -62,7 +62,7 @@ automatically (see the `CopyToNinaPlugins` target in the csproj) for quick itera
 3. In an Advanced Sequence, add the instructions, e.g.:
    - **Start Timelapse Capture** at session start
    - **Stop Timelapse Capture** at session end
-   - **Create Timelapse Video** afterwards (blank date = the session that just ended)
+   - **Create Timelapse Video** afterwards (renders the session that just ended)
 
 ## Publish to NINA's in-app Plugins tab
 

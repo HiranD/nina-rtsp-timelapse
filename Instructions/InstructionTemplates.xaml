@@ -27,16 +27,8 @@
         <nina:SequenceBlockView DataContext="{Binding}" />
     </DataTemplate>
 
-    <!-- Create Timelapse Video -->
+    <!-- Create Timelapse Video (renders the newest session; no options) -->
     <DataTemplate DataType="{x:Type local:CreateVideo}">
-        <nina:SequenceBlockView DataContext="{Binding}">
-            <nina:SequenceBlockView.SequenceItemContent>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Date (YYYYMMDD, blank = newest)"
-                               VerticalAlignment="Center" Margin="0,0,5,0" />
-                    <TextBox MinWidth="90" VerticalAlignment="Center" Text="{Binding Date}" />
-                </StackPanel>
-            </nina:SequenceBlockView.SequenceItemContent>
-        </nina:SequenceBlockView>
+        <nina:SequenceBlockView DataContext="{Binding}" />
     </DataTemplate>
 </ResourceDictionary>
