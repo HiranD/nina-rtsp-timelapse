@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <OutputType>Library</OutputType>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>NINA.RtspTimelapse.Plugin</AssemblyName>
+    <RootNamespace>NINA.RtspTimelapse.Plugin</RootNamespace>
+    <!-- Assembly metadata (name/version/author/manifest fields) lives in Properties/AssemblyInfo.cs -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NINA 3.x plugin SDK (matches N.I.N.A. 3.2). Newtonsoft.Json comes in transitively. -->
+    <PackageReference Include="NINA.Plugin" Version="3.2.0.9001" />
+    <PackageReference Include="NINA.Sequencer" Version="3.2.0.9001" />
+    <PackageReference Include="NINA.Core" Version="3.2.0.9001" />
+    <PackageReference Include="NINA.WPF.Base" Version="3.2.0.9001" />
+    <PackageReference Include="NINA.Profile" Version="3.2.0.9001" />
+  </ItemGroup>
+
+  <!-- Quick local testing: drop the DLL into NINA's plugin folder after a Debug build, then restart NINA.
+       NINA 3.x loads plugins from the version-bracketed Plugins\3.0.0\ subfolder. -->
+  <Target Name="CopyToNinaPlugins" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
+    <PropertyGroup>
+      <NinaPluginDir>$(LOCALAPPDATA)\NINA\Plugins\3.0.0\$(AssemblyName)</NinaPluginDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(NinaPluginDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(NinaPluginDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
