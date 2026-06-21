@@ -11,6 +11,11 @@
         <PathGeometry Figures="M3,6 H15 V18 H3 Z M15,9.5 L21,6 V18 L15,14.5 Z" />
     </GeometryGroup>
 
+    <!-- Distinct fast-forward glyph for the all-in-one "Auto Timelapse" block. -->
+    <GeometryGroup x:Key="RtspTimelapseRun_SVG" FillRule="Nonzero">
+        <PathGeometry Figures="M5,5 L11,12 L5,19 Z M12,5 L18,12 L12,19 Z" />
+    </GeometryGroup>
+
     <!-- Start Timelapse Capture -->
     <DataTemplate DataType="{x:Type local:StartCapture}">
         <nina:SequenceBlockView DataContext="{Binding}">
@@ -32,15 +37,21 @@
         <nina:SequenceBlockView DataContext="{Binding}" />
     </DataTemplate>
 
-    <!-- Run Timelapse Capture (one block: start now; auto stop + optional video at sequence end) -->
+    <!-- Auto Timelapse (one block: start now; auto stop + optional video at sequence end).
+         NINA renders CheckBox as a toggle and doesn't show its Content, so label each toggle
+         with an explicit TextBlock. -->
     <DataTemplate DataType="{x:Type local:RunTimelapse}">
         <nina:SequenceBlockView DataContext="{Binding}">
             <nina:SequenceBlockView.SequenceItemContent>
-                <StackPanel Orientation="Horizontal">
-                    <CheckBox Content="Wait until capturing" VerticalAlignment="Center"
-                              IsChecked="{Binding WaitUntilCapturing}" />
-                    <CheckBox Content="Create video when finished" VerticalAlignment="Center"
-                              Margin="12,0,0,0" IsChecked="{Binding CreateVideoWhenDone}" />
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal" Margin="0,1">
+                        <CheckBox IsChecked="{Binding WaitUntilCapturing}" VerticalAlignment="Center" />
+                        <TextBlock Text="Wait until capturing" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,1">
+                        <CheckBox IsChecked="{Binding CreateVideoWhenDone}" VerticalAlignment="Center" />
+                        <TextBlock Text="Create video when finished" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
                 </StackPanel>
             </nina:SequenceBlockView.SequenceItemContent>
         </nina:SequenceBlockView>

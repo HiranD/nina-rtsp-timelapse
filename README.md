@@ -22,7 +22,7 @@ This plugin is a thin client over the RTSP Timelapse app's **local HTTP control 
 
 | Instruction | API call | Notes |
 |---|---|---|
-| **Run Timelapse Capture** | start + auto stop/video | **One block at the start of your sequence.** Starts capture, then automatically stops it and (optionally) renders the video when the sequence ends — even on abort. The video contains only this session's frames. |
+| **Auto Timelapse** | start + auto stop/video | **One block at the start of your sequence.** Starts capture, then automatically stops it and (optionally) renders the video when the sequence ends — even on abort. The video contains only this session's frames. |
 | Start Timelapse Capture | `POST /capture/start` | No-op if already capturing. Optional *Wait until capturing*. |
 | Stop Timelapse Capture | `POST /capture/stop` | No-op if not capturing. |
 | Create Timelapse Video | `POST /video/create` | Renders the session started earlier in the sequence (only its frames), else the latest. Fire-and-forget. |
@@ -61,7 +61,7 @@ automatically (see the `CopyToNinaPlugins` target in the csproj) for quick itera
 1. In the RTSP Timelapse app, enable the remote API (Integrations tab). Note the port.
 2. In NINA, set the same port in the plugin's options and click *Test connection*.
 3. In an Advanced Sequence, the simplest setup is **one block**:
-   - Add **Run Timelapse Capture** at the start of your sequence. It starts capture
+   - Add **Auto Timelapse** at the start of your sequence. It starts capture
      immediately and, when the sequence ends (or is aborted), stops capture and — if
      *Create video when finished* is ticked — renders the session's video. The video
      includes only the frames from this run, so an earlier same-evening test capture

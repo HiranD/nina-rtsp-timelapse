@@ -10,9 +10,9 @@ using NINA.Sequencer.SequenceItem;
 
 namespace NINA.RtspTimelapse.Plugin.Instructions {
 
-    [ExportMetadata("Name", "Run Timelapse Capture")]
+    [ExportMetadata("Name", "Auto Timelapse")]
     [ExportMetadata("Description", "Starts RTSP timelapse capture, then automatically stops it (and optionally renders the video) when the sequence ends. Put one of these at the start of your sequence. The rendered video contains only this session's frames.")]
-    [ExportMetadata("Icon", "RtspTimelapse_SVG")]
+    [ExportMetadata("Icon", "RtspTimelapseRun_SVG")]
     [ExportMetadata("Category", "RTSP Timelapse")]
     [Export(typeof(ISequenceItem))]
     [JsonObject(MemberSerialization.OptIn)]
@@ -55,7 +55,7 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
 
             var status = await client.GetStatusAsync(token);
             if (status.Capturing) {
-                Logger.Info("RTSP Timelapse already capturing; Run Timelapse Capture will not manage this session.");
+                Logger.Info("RTSP Timelapse already capturing; Auto Timelapse will not manage this session.");
                 return;
             }
 
@@ -105,7 +105,7 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
                     }
                 }
             } catch (Exception ex) {
-                Logger.Error($"Run Timelapse Capture teardown failed: {ex.Message}");
+                Logger.Error($"Auto Timelapse teardown failed: {ex.Message}");
             }
         }
 

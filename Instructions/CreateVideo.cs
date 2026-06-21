@@ -10,7 +10,7 @@ using NINA.Sequencer.SequenceItem;
 namespace NINA.RtspTimelapse.Plugin.Instructions {
 
     [ExportMetadata("Name", "Create Timelapse Video")]
-    [ExportMetadata("Description", "Renders the timelapse video via the app's local HTTP API. If a Start / Run Timelapse Capture block ran earlier in this sequence, only that session's frames are included; otherwise the latest session. Honours the app's Discord upload settings. Fire-and-forget: completes once accepted, not when rendering finishes.")]
+    [ExportMetadata("Description", "Renders the timelapse video via the app's local HTTP API. If a Start Timelapse Capture / Auto Timelapse block ran earlier in this sequence, only that session's frames are included; otherwise the latest session. Honours the app's Discord upload settings. Fire-and-forget: completes once accepted, not when rendering finishes.")]
     [ExportMetadata("Icon", "RtspTimelapse_SVG")]
     [ExportMetadata("Category", "RTSP Timelapse")]
     [Export(typeof(ISequenceItem))]
