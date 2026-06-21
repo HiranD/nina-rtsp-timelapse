@@ -1,0 +1,34 @@
+<ResourceDictionary
+    x:Class="NINA.RtspTimelapse.Plugin.Options"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Key must be "<AssemblyTitle>_Options" so N.I.N.A. shows it on the plugin's options page.
+         DataContext is the RtspTimelapsePlugin instance. -->
+    <DataTemplate x:Key="RTSP Timelapse Control_Options">
+        <StackPanel Orientation="Vertical" Margin="0,5,0,0" TextElement.FontSize="14">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <TextBlock Text="Remote API port" VerticalAlignment="Center" Width="120" />
+                <TextBox MinWidth="70" VerticalAlignment="Center"
+                         Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="Test connection" Margin="10,0,0,0" Padding="6,1"
+                        FontSize="12" VerticalAlignment="Center"
+                        Command="{Binding TestConnectionCommand}" />
+                <TextBlock Text="{Binding TestResult}" Margin="10,0,0,0" FontSize="12"
+                           VerticalAlignment="Center" Opacity="0.85" />
+            </StackPanel>
+            <!-- No MaxWidth: let it wrap to the available width instead of breaking mid-phrase. -->
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                       Text="Must match the port in the RTSP Timelapse app (Integrations tab → Enable remote control API). The plugin connects to 127.0.0.1 on this PC only." />
+
+            <!-- About the app (this Plugins tab is the main way people discover it). -->
+            <Separator Margin="0,12,0,8" Opacity="0.3" />
+            <TextBlock TextWrapping="Wrap" FontSize="12"
+                       Text="RTSP Timelapse Capture is a free, open-source Windows app that records timelapses from any RTSP / IP camera — with smart overnight / twilight scheduling, one-click MP4 export, and automatic Discord upload. This plugin lets N.I.N.A. start/stop capture and render the video as part of your sequence." />
+            <TextBlock Margin="0,6,0,0" FontSize="12">
+                <Hyperlink NavigateUri="https://github.com/HiranD/RTSP-Timelapse-Capture"
+                           RequestNavigate="Hyperlink_RequestNavigate">Get the RTSP Timelapse Capture app →</Hyperlink>
+            </TextBlock>
+        </StackPanel>
+    </DataTemplate>
+</ResourceDictionary>
