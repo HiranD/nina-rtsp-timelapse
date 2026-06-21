@@ -1,0 +1,63 @@
+<ResourceDictionary
+    x:Class="NINA.RtspTimelapse.Plugin.Dockable.DockableTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Key must be "<fully-qualified-dockable-type>_Dockable". -->
+    <DataTemplate x:Key="NINA.RtspTimelapse.Plugin.Dockable.RtspStatusDockable_Dockable">
+        <Grid Margin="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Connection line -->
+            <TextBlock Grid.Row="0" Margin="0,0,0,6" FontWeight="Bold"
+                       Text="{Binding ConnectionText}" Foreground="{Binding ConnectionBrush}" />
+
+            <!-- Status grid -->
+            <Grid Grid.Row="1" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Capturing" Margin="0,1,12,1" />
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Capturing}" Margin="0,1" />
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="State" Margin="0,1,12,1" />
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding State}" Margin="0,1" />
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Frames" Margin="0,1,12,1" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding FrameCount}" Margin="0,1" />
+
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Failed" Margin="0,1,12,1" />
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding FailedFrameCount}" Margin="0,1" />
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Uptime" Margin="0,1,12,1" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Uptime}" Margin="0,1" />
+            </Grid>
+
+            <!-- Error line (empty when nothing to show) -->
+            <TextBlock Grid.Row="2" Margin="0,0,0,6" TextWrapping="Wrap" Foreground="Tomato"
+                       Text="{Binding ErrorText}" />
+
+            <!-- Actions -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal">
+                <Button Content="Start" Margin="0,0,6,0" Padding="10,3" Command="{Binding StartCommand}" />
+                <Button Content="Stop" Margin="0,0,6,0" Padding="10,3" Command="{Binding StopCommand}" />
+                <Button Content="Create Video" Margin="0,0,6,0" Padding="10,3" Command="{Binding CreateVideoCommand}" />
+                <Button Content="Refresh" Padding="10,3" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+</ResourceDictionary>
