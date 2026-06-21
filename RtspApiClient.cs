@@ -52,11 +52,14 @@ namespace NINA.RtspTimelapse.Plugin {
         public Task StopCaptureAsync(CancellationToken token) =>
             PostAsync("/capture/stop", null, token);
 
-        /// <summary>POST /video/create. Pass null/blank for the newest session.</summary>
-        public Task CreateVideoAsync(string date, CancellationToken token) {
-            string body = string.IsNullOrWhiteSpace(date)
+        /// <summary>
+        /// POST /video/create. Pass a `since` timestamp (YYYYMMDD-HHMMSS) to render only
+        /// frames captured at/after it; null/blank renders the latest session (all frames).
+        /// </summary>
+        public Task CreateVideoAsync(string since, CancellationToken token) {
+            string body = string.IsNullOrWhiteSpace(since)
                 ? null
-                : JsonConvert.SerializeObject(new { date = date.Trim() });
+                : JsonConvert.SerializeObject(new { since = since.Trim() });
             return PostAsync("/video/create", body, token);
         }
 

@@ -47,6 +47,9 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
                 return;
             }
 
+            // Remember the start instant so a later Create Video step renders only this session's frames.
+            RtspSession.LastStartSince = RtspSession.FormatSince(DateTime.Now);
+
             await client.StartCaptureAsync(token);
 
             if (WaitUntilCapturing) {
