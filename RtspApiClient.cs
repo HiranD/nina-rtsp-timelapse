@@ -21,6 +21,9 @@ namespace NINA.RtspTimelapse.Plugin {
         // are supplied via CancellationToken by callers.
         private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
+        // How long WaitForFirstFrameAsync waits for the first captured frame before failing.
+        private const int StartTimeoutSeconds = 60;
+
         private readonly string baseUrl;
 
         public RtspApiClient(int port) {
@@ -44,6 +47,28 @@ namespace NINA.RtspTimelapse.Plugin {
         public async Task<RtspStatus> GetStatusAsync(CancellationToken token) {
             var json = await GetAsync("/status", token).ConfigureAwait(false);
             return JsonConvert.DeserializeObject<RtspStatus>(json);
+        }
+
+        /// <summary>
+        /// Wait until capture has genuinely started, i.e. the app has saved the first frame
+        /// (frame_count > 0). The app flips its "capturing" flag the instant start is requested -
+        /// before the camera connects - so that flag alone isn't a reliable "started" signal.
+        /// Fails fast if capture stops/errors before a frame, and gives up after a timeout.
+        /// </summary>
+        public async Task WaitForFirstFrameAsync(CancellationToken token) {
+            for (var second = 0; second < StartTimeoutSeconds; second++) {
+                token.ThrowIfCancellationRequested();
+                var status = await GetStatusAsync(token).ConfigureAwait(false);
+                if (status.FrameCount > 0) {
+                    return;
+                }
+                if (!status.Capturing) {
+                    var detail = string.IsNullOrWhiteSpace(status.LastError) ? "" : $" ({status.LastError})";
+                    throw new RtspApiException($"RTSP capture stopped before the first frame was captured{detail}.", 0);
+                }
+                await Task.Delay(TimeSpan.FromSeconds(1), token).ConfigureAwait(false);
+            }
+            throw new RtspApiException($"RTSP capture did not save a frame within {StartTimeoutSeconds}s.", 0);
         }
 
         public Task StartCaptureAsync(CancellationToken token) =>

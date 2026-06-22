@@ -67,21 +67,8 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             started = true;
 
             if (WaitUntilCapturing) {
-                await WaitUntilCapturingAsync(client, token);
+                await client.WaitForFirstFrameAsync(token);
             }
-        }
-
-        // /capture/start returns 202 (accepted) immediately, so confirm it actually started.
-        private static async Task WaitUntilCapturingAsync(RtspApiClient client, CancellationToken token) {
-            for (var attempt = 0; attempt < 20; attempt++) {
-                token.ThrowIfCancellationRequested();
-                var status = await client.GetStatusAsync(token);
-                if (status.Capturing) {
-                    return;
-                }
-                await Task.Delay(TimeSpan.FromMilliseconds(500), token);
-            }
-            throw new Exception("RTSP capture did not report 'capturing' within ~10 seconds of starting.");
         }
 
         // N.I.N.A. calls Teardown() once at the very end of the sequence run - including
