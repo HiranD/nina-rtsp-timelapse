@@ -16,13 +16,15 @@
         <PathGeometry Figures="M5,5 L11,12 L5,19 Z M12,5 L18,12 L12,19 Z" />
     </GeometryGroup>
 
-    <!-- Start Timelapse Capture -->
+    <!-- Start Timelapse Capture. NINA hides a CheckBox's Content, so label the toggle with a TextBlock. -->
     <DataTemplate DataType="{x:Type local:StartCapture}">
         <nina:SequenceBlockView DataContext="{Binding}">
             <nina:SequenceBlockView.SequenceItemContent>
-                <CheckBox Content="Wait until capturing"
-                          VerticalAlignment="Center"
-                          IsChecked="{Binding WaitUntilCapturing}" />
+                <StackPanel Orientation="Horizontal"
+                            ToolTip="Pause the sequence until the app captures the first frame (camera connected and streaming). Fails if no frame arrives within ~60s or capture stops. Turn off to continue as soon as the start command is accepted.">
+                    <CheckBox IsChecked="{Binding WaitUntilCapturing}" VerticalAlignment="Center" />
+                    <TextBlock Text="Wait for capture to start" VerticalAlignment="Center" Margin="6,0,0,0" />
+                </StackPanel>
             </nina:SequenceBlockView.SequenceItemContent>
         </nina:SequenceBlockView>
     </DataTemplate>
@@ -44,11 +46,13 @@
         <nina:SequenceBlockView DataContext="{Binding}">
             <nina:SequenceBlockView.SequenceItemContent>
                 <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal" Margin="0,1">
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Pause the sequence until the app confirms capture is actually running (the camera has connected). If it doesn't start within ~10 seconds, this step fails. Turn off to continue as soon as the start command is accepted.">
                         <CheckBox IsChecked="{Binding WaitUntilCapturing}" VerticalAlignment="Center" />
-                        <TextBlock Text="Wait until capturing" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        <TextBlock Text="Wait for capture to start" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,1">
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="When the sequence ends, render the timelapse video for this session (only this run's frames) and auto-upload to Discord if configured in the app.">
                         <CheckBox IsChecked="{Binding CreateVideoWhenDone}" VerticalAlignment="Center" />
                         <TextBlock Text="Create video when finished" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
