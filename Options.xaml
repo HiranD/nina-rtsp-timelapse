@@ -21,6 +21,19 @@
             <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
                        Text="Must match the port in the RTSP Timelapse app (Integrations tab → Enable remote control API). The plugin connects to 127.0.0.1 on this PC only." />
 
+            <!-- Prerequisites the user must configure in the RTSP Timelapse app. -->
+            <TextBlock Text="Set up in the RTSP Timelapse app:" FontWeight="SemiBold" FontSize="12" Margin="0,12,0,3" />
+            <StackPanel Orientation="Vertical" Margin="8,0,0,0" TextElement.FontSize="12">
+                <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
+                           Text="• Integrations tab → enable the remote control API (use the same port as above)." />
+                <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
+                           Text="• Capture tab → camera connection (IP, user, password, stream path) and capture interval." />
+                <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
+                           Text="• Video Export tab → pick a preset and set the output location (where the timelapse videos are saved)." />
+                <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
+                           Text="• Optional: Integrations tab → Discord webhook to auto-upload each finished video." />
+            </StackPanel>
+
             <!-- About the app (this Plugins tab is the main way people discover it). -->
             <Separator Margin="0,12,0,8" Opacity="0.3" />
             <TextBlock TextWrapping="Wrap" FontSize="12"
