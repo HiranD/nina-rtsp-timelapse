@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- **New: Scheduled Timelapse** instruction — starts capture and runs **until a chosen time** (a Source
+  like Nautical Dawn + offset, reusing NINA's "Wait for Time" picker with real twilight math), then
+  stops and optionally renders. No Stop block needed. It blocks the sequence, so use it in a Parallel
+  instruction set to capture alongside imaging.
+- **Options page:** added a "Suggested usage" guide (Start + Stop vs Scheduled Timelapse).
+
 ## 1.2.0
 
 - **Redesign:** removed the **Auto Timelapse** single block (it relied on NINA's run lifecycle and
@@ -9,7 +17,7 @@
     *Stop capturing if the sequence is stopped* (default on) so capture isn't left running on an abort
     (untick to keep capture running through a stop/resume).
   - **Stop Timelapse Capture** — stops capture, then optionally renders this session's video
-    (*Create the video after stopping*, default on).
+    (*Create video when finished*, default on).
 - By default a NINA sequence stop leaves capture running, so a stop and resume keeps the timelapse
   going; the render still includes only this session's frames (via the `since` timestamp).
 
