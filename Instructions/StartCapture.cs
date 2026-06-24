@@ -27,15 +27,29 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         private StartCapture(StartCapture copyMe) : this(copyMe.profileService) {
             CopyMetaData(copyMe);
             WaitUntilCapturing = copyMe.WaitUntilCapturing;
+            StopWhenSequenceStops = copyMe.StopWhenSequenceStops;
         }
 
         private bool waitUntilCapturing = true;
 
-        /// <summary>When true, poll /status until the app reports capturing before completing.</summary>
+        /// <summary>When true, wait until the app captures the first frame before completing.</summary>
         [JsonProperty]
         public bool WaitUntilCapturing {
             get => waitUntilCapturing;
             set { waitUntilCapturing = value; RaisePropertyChanged(); }
+        }
+
+        private bool stopWhenSequenceStops = true;
+
+        /// <summary>
+        /// When true, stop capture in Teardown (when the sequence ends or is stopped) if it's still
+        /// running - a safety net so capture isn't left running if the sequence is aborted before a
+        /// Stop block. On by default; turn off to keep capture running through a stop/resume.
+        /// </summary>
+        [JsonProperty]
+        public bool StopWhenSequenceStops {
+            get => stopWhenSequenceStops;
+            set { stopWhenSequenceStops = value; RaisePropertyChanged(); }
         }
 
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
@@ -54,6 +68,28 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
 
             if (WaitUntilCapturing) {
                 await client.WaitForFirstFrameAsync(token);
+            }
+        }
+
+        // N.I.N.A. calls Teardown() once at the end of the run (including on a user stop/abort).
+        // Optionally stop the capture, so it isn't left running if the sequence was stopped before a
+        // Stop block ran. Idempotent + exception-safe (must never throw).
+        public override async void Teardown() {
+            base.Teardown();
+            if (!StopWhenSequenceStops) {
+                return;
+            }
+            try {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30))) {
+                    var client = RtspApiClient.FromProfile(profileService);
+                    var status = await client.GetStatusAsync(cts.Token);
+                    if (status.Capturing) {
+                        Logger.Info("Sequence stopped - stopping RTSP capture (Stop capturing if the sequence is stopped).");
+                        await client.StopCaptureAsync(cts.Token);
+                    }
+                }
+            } catch (Exception ex) {
+                Logger.Error($"Start Timelapse Capture teardown failed: {ex.Message}");
             }
         }
 

@@ -11,7 +11,7 @@ using NINA.Sequencer.SequenceItem;
 namespace NINA.RtspTimelapse.Plugin.Instructions {
 
     [ExportMetadata("Name", "Stop Timelapse Capture")]
-    [ExportMetadata("Description", "Stops RTSP timelapse capture via the app's local HTTP API. No-op if not capturing.")]
+    [ExportMetadata("Description", "Stops RTSP timelapse capture via the app's local HTTP API, then optionally renders the video for this session. Stop is a no-op if not capturing.")]
     [ExportMetadata("Icon", "RtspTimelapse_SVG")]
     [ExportMetadata("Category", "RTSP Timelapse")]
     [Export(typeof(ISequenceItem))]
@@ -26,18 +26,34 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
 
         private StopCapture(StopCapture copyMe) : this(copyMe.profileService) {
             CopyMetaData(copyMe);
+            CreateVideoAfterStop = copyMe.CreateVideoAfterStop;
+        }
+
+        private bool createVideoAfterStop = true;
+
+        /// <summary>
+        /// When true, render the timelapse video after stopping - only this session's frames, via the
+        /// start time the Start block remembered. The app uploads to Discord too, if configured.
+        /// </summary>
+        [JsonProperty]
+        public bool CreateVideoAfterStop {
+            get => createVideoAfterStop;
+            set { createVideoAfterStop = value; RaisePropertyChanged(); }
         }
 
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
             var client = RtspApiClient.FromProfile(profileService);
 
             var status = await client.GetStatusAsync(token);
-            if (!status.Capturing) {
-                Logger.Info("RTSP Timelapse is not capturing; Stop Timelapse Capture is a no-op.");
-                return;
+            if (status.Capturing) {
+                await client.StopCaptureAsync(token);
+            } else {
+                Logger.Info("RTSP Timelapse is not capturing; Stop is a no-op.");
             }
 
-            await client.StopCaptureAsync(token);
+            if (CreateVideoAfterStop) {
+                await client.CreateVideoAsync(RtspSession.LastStartSince, token);
+            }
         }
 
         public override object Clone() => new StopCapture(this);
