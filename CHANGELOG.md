@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.2.0
+
+- **Redesign:** removed the **Auto Timelapse** single block (it relied on NINA's run lifecycle and
+  couldn't survive stopping and resuming from the middle of a sequence) and the standalone **Create
+  Timelapse Video** block. The plugin is now two explicit blocks:
+  - **Start Timelapse Capture** — starts capture; waits for the first frame by default;
+    *Stop capturing if the sequence is stopped* (default on) so capture isn't left running on an abort
+    (untick to keep capture running through a stop/resume).
+  - **Stop Timelapse Capture** — stops capture, then optionally renders this session's video
+    (*Create the video after stopping*, default on).
+- By default a NINA sequence stop leaves capture running, so a stop and resume keeps the timelapse
+  going; the render still includes only this session's frames (via the `since` timestamp).
+
 ## 1.1.0
 
 - **New: Auto Timelapse** instruction — a single block at the start of a sequence that starts
