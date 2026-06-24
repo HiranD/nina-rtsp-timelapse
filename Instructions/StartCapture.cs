@@ -39,12 +39,13 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             set { waitUntilCapturing = value; RaisePropertyChanged(); }
         }
 
-        private bool stopWhenSequenceStops = true;
+        private bool stopWhenSequenceStops = false;
 
         /// <summary>
         /// When true, stop capture in Teardown (when the sequence ends or is stopped) if it's still
         /// running - a safety net so capture isn't left running if the sequence is aborted before a
-        /// Stop block. On by default; turn off to keep capture running through a stop/resume.
+        /// Stop block. Off by default so a stop/resume keeps capture running, and to encourage pairing
+        /// with an explicit Stop block; turn on to stop capture whenever the sequence stops.
         /// </summary>
         [JsonProperty]
         public bool StopWhenSequenceStops {
