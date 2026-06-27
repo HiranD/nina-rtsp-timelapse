@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- **Scheduled Timelapse is now app-driven and robust:** the plugin hands the target time to the app via
+  a new `POST /capture/schedule`, and the **app owns the stop timer** — so capture stops (and renders) at
+  the scheduled time **even if the NINA sequence is stopped** or NINA is closed. The block is now
+  **non-blocking** (the sequence continues immediately; no Parallel set needed).
+- Added a **"Wait for capture to start"** toggle to Scheduled Timelapse (default on).
+- Any manual stop — the app's Stop button, a Stop block, or `/capture/stop` — cancels a pending
+  scheduled stop. (Requires the RTSP Timelapse app build with `/capture/schedule` support.)
+
 ## 1.3.0
 
 - **New: Scheduled Timelapse** instruction — starts capture and runs **until a chosen time** (a Source

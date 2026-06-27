@@ -24,7 +24,7 @@ This plugin is a thin client over the RTSP Timelapse app's **local HTTP control 
 |---|---|---|
 | **Start Timelapse Capture** | `POST /capture/start` | Starts capture (no-op if already capturing). *Wait for capture to start* (default on) waits for the first frame; *Stop capturing if the sequence is stopped* (default off) — tick to stop capture if you abort before a Stop block (off keeps capture running through a stop/resume). |
 | **Stop Timelapse Capture** | `POST /capture/stop` (+ `/video/create`) | Stops capture, then — if *Create video when finished* is ticked (default on) — renders this session's video (only its frames; uploads to Discord if the app is configured). |
-| **Scheduled Timelapse** | start + `/capture/stop` (+ `/video/create`) | One block: starts capture and runs **until a chosen time** (a Source like Nautical Dawn + offset, reusing NINA's Wait-for-Time picker), then stops and optionally renders. No Stop block needed. It blocks the sequence — put it in a **Parallel** set to capture alongside imaging. |
+| **Scheduled Timelapse** | `POST /capture/schedule` | One block: starts capture and tells the **app** to auto-stop at a chosen time (Source like Nautical Dawn + offset, reusing NINA's Wait-for-Time picker) and optionally render. No Stop block needed; the app owns the timer, so it stops at the time **even if the sequence is stopped**. Non-blocking — the sequence continues immediately. |
 
 **Dock panel** (*RTSP Timelapse*, on the Imaging tab): live connection/version,
 capturing state, frame counts, uptime and errors, with manual Start/Stop/Create-Video
@@ -65,9 +65,9 @@ automatically (see the `CopyToNinaPlugins` target in the csproj) for quick itera
      this session's video (only its frames, so an earlier same-evening test capture sharing the date
      folder isn't pulled in; uploads to Discord if the app is configured).
 
-   Or use **one block**: add **Scheduled Timelapse** (it captures until a chosen time, then stops and
-   renders — no Stop block). Since it blocks the sequence until that time, put it in a **Parallel**
-   instruction set to capture alongside imaging.
+   Or use **one block**: add **Scheduled Timelapse** — it starts capture and the **app** auto-stops +
+   renders at a chosen time (no Stop block). It's **non-blocking** (the sequence continues), and the
+   scheduled stop fires even if you stop the sequence. The app's Stop button — or a Stop block — cancels it.
 
    Notes:
    - By default, stopping the NINA sequence does **not** stop capture, so a stop and resume keeps the

@@ -8,8 +8,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("RTSP Timelapse Control")]
 
 // [MANDATORY] Version: Major.Minor.Patch.Build
-[assembly: AssemblyVersion("1.3.0.0")]
-[assembly: AssemblyFileVersion("1.3.0.0")]
+[assembly: AssemblyVersion("1.4.0.0")]
+[assembly: AssemblyFileVersion("1.4.0.0")]
 
 // [RECOMMENDED] Author / company.
 [assembly: AssemblyCompany("HiranD")]
