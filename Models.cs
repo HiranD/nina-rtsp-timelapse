@@ -17,5 +17,8 @@ namespace NINA.RtspTimelapse.Plugin {
         [JsonProperty("uptime_seconds")] public int UptimeSeconds { get; set; }
         [JsonProperty("last_error")] public string LastError { get; set; }
         [JsonProperty("scheduler_enabled")] public bool SchedulerEnabled { get; set; }
+        // The app-owned start of the current/most-recent session (YYYYMMDD-HHMMSS), or null after
+        // an app restart. The single source of truth for which session a render should cover.
+        [JsonProperty("session_start_time")] public string SessionStart { get; set; }
     }
 }

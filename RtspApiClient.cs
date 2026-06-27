@@ -41,12 +41,12 @@ namespace NINA.RtspTimelapse.Plugin {
 
         public async Task<RtspHealth> GetHealthAsync(CancellationToken token) {
             var json = await GetAsync("/health", token).ConfigureAwait(false);
-            return JsonConvert.DeserializeObject<RtspHealth>(json);
+            return Deserialize<RtspHealth>(json);
         }
 
         public async Task<RtspStatus> GetStatusAsync(CancellationToken token) {
             var json = await GetAsync("/status", token).ConfigureAwait(false);
-            return JsonConvert.DeserializeObject<RtspStatus>(json);
+            return Deserialize<RtspStatus>(json);
         }
 
         /// <summary>
@@ -136,6 +136,22 @@ namespace NINA.RtspTimelapse.Plugin {
                 /* body wasn't JSON; keep the status-line message */
             }
             throw new RtspApiException(message, (int)resp.StatusCode);
+        }
+
+        // Deserialize a JSON response, turning a malformed or empty body - e.g. the configured port
+        // hit a different local service, or a 200 with a "null" body - into a clear RtspApiException
+        // instead of a raw JsonException / NullReferenceException leaking to the caller.
+        private static T Deserialize<T>(string json) where T : class {
+            T result;
+            try {
+                result = JsonConvert.DeserializeObject<T>(json);
+            } catch (JsonException ex) {
+                throw new RtspApiException(
+                    "Unexpected response from the RTSP Timelapse app (not valid JSON). " +
+                    "Check the port points at the app's remote control API.", 0, ex);
+            }
+            return result ?? throw new RtspApiException(
+                "The RTSP Timelapse app returned an empty response.", 0);
         }
 
         private string UnreachableMessage() =>

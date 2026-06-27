@@ -32,8 +32,8 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         private bool createVideoAfterStop = true;
 
         /// <summary>
-        /// When true, render the timelapse video after stopping - only this session's frames, via the
-        /// start time the Start block remembered. The app uploads to Discord too, if configured.
+        /// When true, render the timelapse video after stopping - only this session's frames, using
+        /// the session start the app reports on /status. The app uploads to Discord too, if configured.
         /// </summary>
         [JsonProperty]
         public bool CreateVideoAfterStop {
@@ -44,7 +44,12 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
             var client = RtspApiClient.FromProfile(profileService);
 
+            // Read the app-owned session start BEFORE stopping (it survives the stop), so the render
+            // covers exactly this session's frames - even when the plugin's Start was a no-op because
+            // the app button or scheduler started the capture. Null (e.g. after an app restart) falls
+            // back to rendering the whole newest folder.
             var status = await client.GetStatusAsync(token);
+            var since = RtspSession.MarginedSince(status.SessionStart);
             if (status.Capturing) {
                 await client.StopCaptureAsync(token);
             } else {
@@ -52,7 +57,7 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             }
 
             if (CreateVideoAfterStop) {
-                await client.CreateVideoAsync(RtspSession.LastStartSince, token);
+                await client.CreateVideoAsync(since, token);
             }
         }
 
