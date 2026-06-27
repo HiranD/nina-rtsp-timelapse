@@ -40,7 +40,7 @@
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
                            Text="• Start + Stop Timelapse Capture — capture alongside your imaging. Put Start where it begins and Stop where it ends; the defaults work as-is (Stop renders the video — 'Create video when finished' is on by default). Capture keeps running across a NINA pause/resume; the Stop block ends it." />
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
-                           Text="• Scheduled Timelapse — capture until a chosen time (e.g. Nautical Dawn), then auto-stop and render. No Stop block needed. It blocks the sequence until that time, so put it in a Parallel set to capture alongside imaging." />
+                           Text="• Scheduled Timelapse — capture until a chosen time (e.g. Nautical Dawn), then auto-stop and render. No Stop block needed. Non-blocking: it hands the stop time to the app and the sequence continues immediately — the app stops and renders at that time even if the sequence has moved on or been stopped." />
             </StackPanel>
 
             <!-- About the app (this Plugins tab is the main way people discover it). -->

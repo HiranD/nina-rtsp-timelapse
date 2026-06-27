@@ -75,22 +75,35 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         // N.I.N.A. calls Teardown() once at the end of the run (including on a user stop/abort).
         // Optionally stop the capture, so it isn't left running if the sequence was stopped before a
         // Stop block ran. Idempotent + exception-safe (must never throw).
-        public override async void Teardown() {
+        //
+        // NINA's Teardown is synchronous void and is NOT awaited, so we run the stop synchronously and
+        // bounded here rather than as `async void` (which would return immediately and let the stop be
+        // cut off when NINA is shutting down). The HTTP client awaits with ConfigureAwait(false)
+        // throughout, so blocking here cannot deadlock even if this runs on the UI thread. The 10s cap
+        // keeps a user "Stop sequence" responsive if the app is unreachable.
+        public override void Teardown() {
             base.Teardown();
             if (!StopWhenSequenceStops) {
                 return;
             }
             try {
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30))) {
-                    var client = RtspApiClient.FromProfile(profileService);
-                    var status = await client.GetStatusAsync(cts.Token);
-                    if (status.Capturing) {
-                        Logger.Info("Sequence stopped - stopping RTSP capture (Stop capturing if the sequence is stopped).");
-                        await client.StopCaptureAsync(cts.Token);
-                    }
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10))) {
+                    // GetAwaiter().GetResult() rethrows the inner exception directly (unlike .Wait(),
+                    // which wraps it in AggregateException).
+                    StopIfRunningAsync(cts.Token).GetAwaiter().GetResult();
                 }
             } catch (Exception ex) {
                 Logger.Error($"Start Timelapse Capture teardown failed: {ex.Message}");
+            }
+        }
+
+        // Stop capture if it's currently running. Factored out of Teardown so it can run bounded.
+        private async Task StopIfRunningAsync(CancellationToken token) {
+            var client = RtspApiClient.FromProfile(profileService);
+            var status = await client.GetStatusAsync(token).ConfigureAwait(false);
+            if (status.Capturing) {
+                Logger.Info("Sequence stopped - stopping RTSP capture (Stop capturing if the sequence is stopped).");
+                await client.StopCaptureAsync(token).ConfigureAwait(false);
             }
         }
 

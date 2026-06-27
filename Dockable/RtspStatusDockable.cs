@@ -95,9 +95,23 @@ namespace NINA.RtspTimelapse.Plugin.Dockable {
             }
         }
 
+        // Guards against overlapping polls: a slow/stalled app must not let the 3s timer pile up
+        // concurrent requests. All access is on the UI thread (DispatcherTimer), so a plain bool is safe.
+        private bool isRefreshing;
+
         private async void OnTick(object sender, EventArgs e) {
-            if (IsVisible) {
-                await RefreshAsync(CancellationToken.None);
+            if (!IsVisible || isRefreshing) {
+                return;
+            }
+            isRefreshing = true;
+            try {
+                // Bound each poll so a stalled connection can't hang for the full 30s HttpClient
+                // timeout (and block the next ticks) - mirrors the timeout used by the manual buttons.
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10))) {
+                    await RefreshAsync(cts.Token);
+                }
+            } finally {
+                isRefreshing = false;
             }
         }
 
