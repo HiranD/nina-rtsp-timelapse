@@ -1,25 +1,103 @@
+# ---------------------------------------------------------------------------
 # Build output
+# ---------------------------------------------------------------------------
 [Bb]in/
 [Oo]bj/
 [Dd]ebug/
+[Dd]ebugPublic/
 [Rr]elease/
+[Rr]eleases/
 x64/
 x86/
-*.user
-*.suo
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bld/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+artifacts/
 
-# Visual Studio
+# Compiled binaries / debug symbols (this plugin builds from source; nothing here is vendored)
+*.dll
+*.pdb
+*.exe
+*.cache
+
+# ---------------------------------------------------------------------------
+# Visual Studio / MSBuild
+# ---------------------------------------------------------------------------
 .vs/
+*.user
+*.userosscache
+*.userprefs
+*.suo
 *.vspscc
 *.vssscc
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
 
-# Rider
+# ---------------------------------------------------------------------------
+# VS Code
+# ---------------------------------------------------------------------------
+.vscode/
+
+# ---------------------------------------------------------------------------
+# JetBrains Rider / ReSharper
+# ---------------------------------------------------------------------------
 .idea/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
 
+# ---------------------------------------------------------------------------
 # NuGet
+# ---------------------------------------------------------------------------
 *.nupkg
+*.snupkg
 packages/
 
-# Generated manifest artifacts
+# ---------------------------------------------------------------------------
+# Test results / coverage
+# ---------------------------------------------------------------------------
+[Tt]est[Rr]esult*/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# ---------------------------------------------------------------------------
+# Generated manifest artifacts (NINA plugin manifest tooling)
+# ---------------------------------------------------------------------------
 manifest.json
 *.zip
+
+# ---------------------------------------------------------------------------
+# Editor / scratch / temp files
+# ---------------------------------------------------------------------------
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.orig
+scratch/
+
+# ---------------------------------------------------------------------------
+# OS cruft
+# ---------------------------------------------------------------------------
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# Local-only working docs (reviews, notes — kept out of the repo by choice)
+# ---------------------------------------------------------------------------
+docs/
