@@ -71,13 +71,13 @@
                             <TextBlock Text="m" VerticalAlignment="Center" Margin="2,0,0,0" />
                         </StackPanel>
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,1">
-                        <TextBlock Text="Day rollover" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.7" />
-                        <TextBlock VerticalAlignment="Center" Opacity="0.7"
-                                   Text="{Binding RolloverTime, StringFormat={}{0:HH}:{0:mm}:{0:ss}}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Pause the sequence until the app captures the first frame (camera connected and streaming). Fails if no frame arrives within ~60s. Turn off to continue as soon as capture is requested.">
+                        <CheckBox IsChecked="{Binding WaitUntilCapturing}" VerticalAlignment="Center" />
+                        <TextBlock Text="Wait for capture to start" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="When the target time is reached, render this session's timelapse video (uploads to Discord if configured in the app). Skipped if the sequence is stopped early.">
+                                ToolTip="At the target time the app renders this session's timelapse video (uploads to Discord if configured). The app stops + renders even if the NINA sequence was stopped.">
                         <CheckBox IsChecked="{Binding CreateVideoWhenDone}" VerticalAlignment="Center" />
                         <TextBlock Text="Create video when finished" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>

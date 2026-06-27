@@ -78,6 +78,15 @@ namespace NINA.RtspTimelapse.Plugin {
             PostAsync("/capture/stop", null, token);
 
         /// <summary>
+        /// POST /capture/schedule: start capture (if needed) and have the app auto-stop at
+        /// <paramref name="stopAt"/> (YYYYMMDD-HHMMSS), rendering the video if <paramref name="createVideo"/>.
+        /// </summary>
+        public Task ScheduleCaptureAsync(string stopAt, bool createVideo, CancellationToken token) {
+            var body = JsonConvert.SerializeObject(new { stop_at = stopAt, create_video = createVideo });
+            return PostAsync("/capture/schedule", body, token);
+        }
+
+        /// <summary>
         /// POST /video/create. Pass a `since` timestamp (YYYYMMDD-HHMMSS) to render only
         /// frames captured at/after it; null/blank renders the latest session (all frames).
         /// </summary>

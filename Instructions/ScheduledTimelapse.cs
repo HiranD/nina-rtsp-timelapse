@@ -16,7 +16,7 @@ using NINA.Sequencer.Utility.DateTimeProvider;
 namespace NINA.RtspTimelapse.Plugin.Instructions {
 
     [ExportMetadata("Name", "Scheduled Timelapse")]
-    [ExportMetadata("Description", "Starts RTSP timelapse capture and runs until a chosen time (e.g. Nautical Dawn + offset), then stops and optionally renders the video. No Stop block needed. It blocks the sequence until that time - put it in a Parallel set to capture alongside imaging.")]
+    [ExportMetadata("Description", "Starts RTSP timelapse capture and tells the app to auto-stop at a chosen time (e.g. Nautical Dawn + offset) and optionally render. No Stop block needed - the app owns the timer, so it stops at the time even if the sequence is stopped. Non-blocking: the sequence continues immediately.")]
     [ExportMetadata("Icon", "ClockSVG")]
     [ExportMetadata("Category", "RTSP Timelapse")]
     [Export(typeof(ISequenceItem))]
@@ -38,6 +38,7 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             Seconds = copyMe.Seconds;
             MinutesOffset = copyMe.MinutesOffset;
             CreateVideoWhenDone = copyMe.CreateVideoWhenDone;
+            WaitUntilCapturing = copyMe.WaitUntilCapturing;
             SelectedProvider = copyMe.SelectedProvider;
         }
 
@@ -101,10 +102,11 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             set { createVideoWhenDone = value; RaisePropertyChanged(); }
         }
 
-        private TimeOnly rolloverTime = new TimeOnly(12, 0, 0);
-        public TimeOnly RolloverTime {
-            get => rolloverTime;
-            private set { rolloverTime = value; RaisePropertyChanged(); }
+        private bool waitUntilCapturing = true;
+        [JsonProperty]
+        public bool WaitUntilCapturing {
+            get => waitUntilCapturing;
+            set { waitUntilCapturing = value; RaisePropertyChanged(); }
         }
 
         // The manual "Time" provider lets the user type the clock time; all others compute it.
@@ -131,7 +133,6 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         private void UpdateTime() {
             try {
                 if (SelectedProvider == null) { return; }
-                RolloverTime = SelectedProvider.GetRolloverTime(this);
                 if (HasFixedTimeProvider) {
                     var t = SelectedProvider.GetDateTime(this) + TimeSpan.FromMinutes(MinutesOffset);
                     Hours = t.Hour;
@@ -143,17 +144,29 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
             }
         }
 
-        // Mirrors Wait for Time: target clock time -> TimeSpan from now, with day-rollover handling.
-        public override TimeSpan GetEstimatedDuration() {
+        // The block returns quickly (it just hands the schedule to the app), so it doesn't add to the
+        // sequence's estimated duration.
+        public override TimeSpan GetEstimatedDuration() => TimeSpan.Zero;
+
+        // Wait until the target, computed fresh and SIDE-EFFECT-FREE (no property writes) so it's safe
+        // to call from Execute on a background sequence thread. For a fixed source it recomputes the
+        // time from the provider (avoids using a stale cached value); manual uses the entered H:M:S.
+        // Mirrors Wait for Time's day-rollover handling.
+        private TimeSpan DurationUntilTarget() {
             if (SelectedProvider == null) { return TimeSpan.Zero; }
             try {
                 var now = DateTime.Now;
-                var then = new DateTime(now.Year, now.Month, now.Day, Hours, Minutes, Seconds);
-                RolloverTime = SelectedProvider.GetRolloverTime(this);
+                int h = Hours, m = Minutes, s = Seconds;
+                if (HasFixedTimeProvider) {
+                    var t = SelectedProvider.GetDateTime(this) + TimeSpan.FromMinutes(MinutesOffset);
+                    h = t.Hour; m = t.Minute; s = t.Second;
+                }
+                var rollover = SelectedProvider.GetRolloverTime(this);
+                var then = new DateTime(now.Year, now.Month, now.Day, h, m, s);
                 var timeOnlyNow = TimeOnly.FromDateTime(now);
                 var timeOnlyThen = TimeOnly.FromDateTime(then);
-                if (timeOnlyNow < RolloverTime && timeOnlyThen >= RolloverTime) { then = then.AddDays(-1); }
-                if (timeOnlyNow >= RolloverTime && timeOnlyThen < RolloverTime) { then = then.AddDays(1); }
+                if (timeOnlyNow < rollover && timeOnlyThen >= rollover) { then = then.AddDays(-1); }
+                if (timeOnlyNow >= rollover && timeOnlyThen < rollover) { then = then.AddDays(1); }
                 var diff = then - DateTime.Now;
                 return diff < TimeSpan.Zero ? TimeSpan.Zero : diff;
             } catch (Exception ex) {
@@ -165,37 +178,14 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
             var client = RtspApiClient.FromProfile(profileService);
 
-            string since;
-            var status = await client.GetStatusAsync(token);
-            if (!status.Capturing) {
-                since = RtspSession.FormatSince(DateTime.Now);
-                RtspSession.LastStartSince = since;
-                await client.StartCaptureAsync(token);
-                await client.WaitForFirstFrameAsync(token);
-            } else {
-                since = RtspSession.LastStartSince;
-                Logger.Info("RTSP Timelapse already capturing; Scheduled Timelapse will run until its target time, then stop.");
-            }
+            // Hand the schedule to the app, which owns the stop timer - so it stops (and optionally
+            // renders) at the target time regardless of the NINA sequence. Non-blocking: we return
+            // after starting (capture is started by the app if it wasn't already).
+            var stopAt = (DateTime.Now + DurationUntilTarget()).ToString("yyyyMMdd-HHmmss");
+            await client.ScheduleCaptureAsync(stopAt, CreateVideoWhenDone, token);
 
-            var completed = false;
-            try {
-                await CoreUtil.Wait(GetEstimatedDuration(), true, token, progress, "");
-                completed = true;
-            } finally {
-                try {
-                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30))) {
-                        var s = await client.GetStatusAsync(cts.Token);
-                        if (s.Capturing) {
-                            await client.StopCaptureAsync(cts.Token);
-                        }
-                        // Only render on a normal finish - not when the sequence was stopped/aborted.
-                        if (completed && CreateVideoWhenDone) {
-                            await client.CreateVideoAsync(since, cts.Token);
-                        }
-                    }
-                } catch (Exception ex) {
-                    Logger.Error($"Scheduled Timelapse cleanup failed: {ex.Message}");
-                }
+            if (WaitUntilCapturing) {
+                await client.WaitForFirstFrameAsync(token);
             }
         }
 
