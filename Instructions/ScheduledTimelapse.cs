@@ -148,40 +148,43 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
         // sequence's estimated duration.
         public override TimeSpan GetEstimatedDuration() => TimeSpan.Zero;
 
-        // Wait until the target, computed fresh and SIDE-EFFECT-FREE (no property writes) so it's safe
-        // to call from Execute on a background sequence thread. For a fixed source it recomputes the
-        // time from the provider (avoids using a stale cached value); manual uses the entered H:M:S.
-        // Mirrors Wait for Time's day-rollover handling.
-        private TimeSpan DurationUntilTarget() {
-            if (SelectedProvider == null) { return TimeSpan.Zero; }
-            try {
-                var now = DateTime.Now;
-                int h = Hours, m = Minutes, s = Seconds;
-                if (HasFixedTimeProvider) {
-                    var t = SelectedProvider.GetDateTime(this) + TimeSpan.FromMinutes(MinutesOffset);
-                    h = t.Hour; m = t.Minute; s = t.Second;
-                }
-                var rollover = SelectedProvider.GetRolloverTime(this);
-                var then = new DateTime(now.Year, now.Month, now.Day, h, m, s);
-                var timeOnlyNow = TimeOnly.FromDateTime(now);
-                var timeOnlyThen = TimeOnly.FromDateTime(then);
-                if (timeOnlyNow < rollover && timeOnlyThen >= rollover) { then = then.AddDays(-1); }
-                if (timeOnlyNow >= rollover && timeOnlyThen < rollover) { then = then.AddDays(1); }
-                var diff = then - DateTime.Now;
-                return diff < TimeSpan.Zero ? TimeSpan.Zero : diff;
-            } catch (Exception ex) {
-                Logger.Error(ex);
-                return TimeSpan.Zero;
-            }
+        // The absolute next-future-occurrence of the target, SIDE-EFFECT-FREE (no property writes) so
+        // it's safe to call from Execute on a background sequence thread. A scheduled STOP is always
+        // the NEXT occurrence - you can't stop in the past - so unlike "Wait for Time" we don't apply
+        // a day-rollover heuristic (which yields a past instant when armed in the evening for a morning
+        // event). NINA anchors sun events to the astro "day", so in the evening GetDateTime() returns
+        // today's already-passed event; we roll forward to the next occurrence. (Astro events drift
+        // only minutes/day - negligible for a stop time.) For a fixed source it recomputes from the
+        // provider (avoids a stale cached value); manual uses the entered H:M:S. Provider exceptions
+        // (e.g. no twilight solution at high latitude) propagate so Execute can fail with a clear message.
+        private DateTime NextTargetTime() {
+            var now = DateTime.Now;
+            DateTime target = HasFixedTimeProvider
+                ? SelectedProvider.GetDateTime(this) + TimeSpan.FromMinutes(MinutesOffset)
+                : now.Date + new TimeSpan(Hours, Minutes, Seconds);   // manual "Time"
+            while (target <= now) { target = target.AddDays(1); }
+            return target;
         }
 
         public override async Task Execute(IProgress<ApplicationStatus> progress, CancellationToken token) {
             var client = RtspApiClient.FromProfile(profileService);
 
+            if (SelectedProvider == null) {
+                throw new SequenceEntityFailedException("Scheduled Timelapse: choose an 'Until' time source.");
+            }
+            DateTime target;
+            try {
+                target = NextTargetTime();
+            } catch (TimeProviderException ex) {
+                // e.g. high-latitude summer: the chosen sun event has no solution.
+                throw new SequenceEntityFailedException(
+                    $"Scheduled Timelapse: {ex.Message} - choose a different 'Until' time source.");
+            }
+
             // Hand the schedule to the app, which owns the stop timer - so it stops (and optionally
             // renders) at the target time regardless of the NINA sequence. Non-blocking: we return
             // after starting (capture is started by the app if it wasn't already).
-            var stopAt = (DateTime.Now + DurationUntilTarget()).ToString("yyyyMMdd-HHmmss");
+            var stopAt = target.ToString("yyyyMMdd-HHmmss");
             await client.ScheduleCaptureAsync(stopAt, CreateVideoWhenDone, token);
 
             if (WaitUntilCapturing) {
