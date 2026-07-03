@@ -18,6 +18,7 @@
 - **Clearer connection errors** when the configured port isn't the app's remote API — an unexpected
   or empty response now explains the likely port mismatch instead of a raw error.
 - Corrected the Scheduled Timelapse note on the options page (it's non-blocking).
+- Requires **N.I.N.A. 3.2** or newer (matches the SDK the plugin is built against).
 
 ## 1.4.0
 

@@ -58,6 +58,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("FeaturedImageURL", "https://raw.githubusercontent.com/HiranD/RTSP-Timelapse-Capture/main/assets/icon.png")]
 
 // [RECOMMENDED] Earliest N.I.N.A. version this plugin is compatible with.
-[assembly: AssemblyMetadata("MinimumApplicationVersion", "3.0.0.0")]
+[assembly: AssemblyMetadata("MinimumApplicationVersion", "3.2.0.9001")]
 
 [assembly: ComVisible(false)]
