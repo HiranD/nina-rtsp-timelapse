@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4.1
+
+- **Fixed: Scheduled Timelapse could fail with "stop_at is in the past."** When armed in the
+  afternoon/evening for a morning target (e.g. Until Sunrise / Dawn), the block computed a stop
+  time in the past and the app rejected it. It now schedules the next future occurrence of the
+  chosen time, and reports a clear error if the source has no solution (e.g. no twilight at high
+  latitude in summer).
+- **More reliable "Stop capturing if the sequence is stopped."** The teardown stop now runs to
+  completion instead of being cut off, so capture isn't left running when a sequence is aborted.
+- **Sturdier status dock.** The panel no longer stalls if the app becomes unresponsive (each poll
+  is time-bounded and overlapping refreshes can't pile up).
+- **Stop + Create Video renders exactly this session.** It uses the session start the app reports
+  on `/status`, so the correct frames are rendered even when capture was started outside the plugin
+  (the app's Stop/Start buttons or scheduler). Requires the RTSP Timelapse app build that reports
+  `session_start_time`; older app builds fall back to rendering the whole newest folder.
+- **Clearer connection errors** when the configured port isn't the app's remote API — an unexpected
+  or empty response now explains the likely port mismatch instead of a raw error.
+- Corrected the Scheduled Timelapse note on the options page (it's non-blocking).
+
 ## 1.4.0
 
 - **Scheduled Timelapse is now app-driven and robust:** the plugin hands the target time to the app via
