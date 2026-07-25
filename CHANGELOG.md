@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.0
+
+- **New: Report Timelapse Events trigger.** Add it to a sequence and the plugin tells the RTSP
+  Timelapse app what's happening during the night, so the app can burn the events onto the finished
+  timelapse as captions at the moment they occurred. Adding the trigger is the on/off switch —
+  there is nothing else to enable — and it reports:
+  - **Sequence instructions** as they finish: autofocus, filter changes, meridian flips, plate
+    solves, dithers, park/unpark. Routine exposures are deliberately ignored, otherwise a night's
+    captions would bury the video.
+  - **Target changes**, e.g. "Target: M31" — sent once when the target actually changes, not once
+    per instruction.
+  - **Guiding lost / resumed**, with the current RMS error (off by default).
+- Event sending can never fail a sequence. When the app isn't capturing there are no frames to
+  attach events to, so those sends are skipped silently; an unreachable app or any other error is
+  logged once and dropped.
+- Requires **RTSP Timelapse Capture 3.6.0 or newer** for the events feature. Against an older app
+  the plugin says so once in the log and carries on — nothing else in the plugin is affected.
+
 ## 1.4.1
 
 - **Fixed: Scheduled Timelapse could fail with "stop_at is in the past."** When armed in the

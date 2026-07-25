@@ -1,0 +1,45 @@
+<ResourceDictionary
+    x:Class="NINA.RtspTimelapse.Plugin.Triggers.TriggerTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:NINA.RtspTimelapse.Plugin.Triggers"
+    xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer"
+    xmlns:nina="clr-namespace:NINA.View.Sequencer;assembly=NINA.Sequencer">
+
+    <!-- Report Timelapse Events. As elsewhere in this plugin, NINA hides a CheckBox's Content,
+         so each toggle is a CheckBox paired with its own TextBlock. -->
+    <DataTemplate DataType="{x:Type local:ReportTimelapseEvents}">
+        <nina:SequenceBlockView DataContext="{Binding}">
+            <nina:SequenceBlockView.SequenceItemContent>
+                <StackPanel Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Caption notable instructions as they finish — autofocus, filter changes, meridian flip, plate solves, dithers, park/unpark. Routine exposures are ignored so the video isn't buried in captions.">
+                        <CheckBox IsChecked="{Binding ReportInstructions}" VerticalAlignment="Center" />
+                        <TextBlock Text="Sequence instructions" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Caption the imaging target whenever it changes, e.g. “Target: M31”. Sent once per change, not per instruction.">
+                        <CheckBox IsChecked="{Binding ReportTargetChanges}" VerticalAlignment="Center" />
+                        <TextBlock Text="Target changes" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Caption guiding being lost and resumed, with the current RMS error. Off by default — useful for diagnosing a night, noisy if your guider reconnects often.">
+                        <CheckBox IsChecked="{Binding ReportGuiding}" VerticalAlignment="Center" />
+                        <TextBlock Text="Guiding lost / resumed" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                </StackPanel>
+            </nina:SequenceBlockView.SequenceItemContent>
+        </nina:SequenceBlockView>
+    </DataTemplate>
+
+    <!-- Compact view used by the mini sequencer on the imaging tab. -->
+    <DataTemplate x:Key="NINA.RtspTimelapse.Plugin.Triggers.ReportTimelapseEvents_Mini">
+        <mini:MiniTrigger>
+            <mini:MiniTrigger.TriggerProgressContent>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" Text="Reporting timelapse events" />
+                </StackPanel>
+            </mini:MiniTrigger.TriggerProgressContent>
+        </mini:MiniTrigger>
+    </DataTemplate>
+</ResourceDictionary>

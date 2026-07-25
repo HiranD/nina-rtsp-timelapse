@@ -8,8 +8,8 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("RTSP Timelapse Control")]
 
 // [MANDATORY] Version: Major.Minor.Patch.Build
-[assembly: AssemblyVersion("1.4.1.0")]
-[assembly: AssemblyFileVersion("1.4.1.0")]
+[assembly: AssemblyVersion("1.5.0.0")]
+[assembly: AssemblyFileVersion("1.5.0.0")]
 
 // [RECOMMENDED] Author / company.
 [assembly: AssemblyCompany("HiranD")]
@@ -40,6 +40,13 @@ using System.Runtime.InteropServices;
     + "all-sky timelapse for exactly the duration of your imaging session, then render it automatically. "
     + "Create Timelapse Video honours the app's Discord settings, so the finished clip can post straight "
     + "to your Discord channel.\n\n"
+    + "### Session events on your timelapse\n"
+    + "Add the **Report Timelapse Events** trigger to a sequence and the plugin tells the app what "
+    + "happened during the night — autofocus runs, filter changes, meridian flips, target changes, "
+    + "guiding lost and resumed. Tick *Overlay session events* on the app's Video Export tab and they "
+    + "appear as captions at the moment they occurred, turning the timelapse into a record of the "
+    + "session as well as a view of the sky. Routine exposures are ignored so the video isn't buried "
+    + "in captions. Requires **RTSP Timelapse Capture 3.6.0 or newer**.\n\n"
     + "### Get the app\n"
     + "Download / docs: **https://github.com/HiranD/RTSP-Timelapse-Capture**\n\n"
     + "Requires the RTSP Timelapse app running on the **same PC** with the remote control API enabled "
