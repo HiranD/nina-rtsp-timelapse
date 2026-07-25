@@ -6,12 +6,19 @@
   Timelapse app what's happening during the night, so the app can burn the events onto the finished
   timelapse as captions at the moment they occurred. Adding the trigger is the on/off switch —
   there is nothing else to enable — and it reports:
-  - **Sequence instructions** as they finish: autofocus, filter changes, meridian flips, plate
-    solves, dithers, park/unpark. Routine exposures are deliberately ignored, otherwise a night's
-    captions would bury the video.
+  - **Sequence instructions** as they finish: autofocus, filter changes, plate solves, dome
+    shutter, find home, park/unpark. Routine exposures and dithers are deliberately ignored,
+    otherwise a night's captions would bury the video.
+  - **Meridian flip**, start and finish. This watches the flip *trigger* rather than the
+    instructions inside it, so it works with N.I.N.A.'s built-in flip and with DIY flip triggers
+    alike.
   - **Target changes**, e.g. "Target: M31" — sent once when the target actually changes, not once
     per instruction.
   - **Guiding lost / resumed**, with the current RMS error (off by default).
+- Instructions that N.I.N.A. runs *from a trigger* — auto-dither, autofocus-after-HFR-increase, the
+  instructions inside a DIY meridian flip — execute outside the normal sequence flow, so they can't
+  be captioned individually. The meridian flip is covered by watching its trigger; the others are
+  not reported.
 - Event sending can never fail a sequence. When the app isn't capturing there are no frames to
   attach events to, so those sends are skipped silently; an unreachable app or any other error is
   logged once and dropped.

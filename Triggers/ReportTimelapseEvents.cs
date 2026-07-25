@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using NINA.Core.Enum;
 using NINA.Core.Model;
 using NINA.Core.Utility;
 using NINA.Equipment.Equipment.MyGuider;
@@ -48,20 +50,35 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         /// and a caption for each would bury the video. Better to show a few meaningful moments and
         /// extend this list than to filter noise out forever. Matching is on a contains basis so
         /// NINA's concrete type names (e.g. "MeridianFlip", "SmartMeridianFlip") both hit.
+        ///
+        /// Note this only ever sees instructions in the normal item flow. Anything NINA runs from a
+        /// trigger (auto-dither, autofocus-after-HFR-increase, a DIY meridian flip) executes under a
+        /// TriggerRunner and never arrives as `previousItem`, so it cannot be captioned from here -
+        /// see ReportMeridianFlip for how the flip is picked up instead.
+        ///
+        /// Dither is deliberately absent: it runs every few exposures, which is far too frequent to
+        /// caption.
         /// </summary>
         private static readonly string[] ReportableTypes = {
             "Autofocus",
-            "MeridianFlip",
+            "MeridianFlip",    // NINA's built-in flip instruction; DIY flips come via the trigger
             "SwitchFilter",
             "Center",          // Center / CenterAndRotate - plate solve + slew
             "SolveAndSync",
-            "Dither",
+            "OpenDomeShutter",
+            "FindHome",
             "ParkScope",
             "UnparkScope",
             "ParkDome",
             "CoolCamera",
             "WarmCamera",
         };
+
+        /// <summary>
+        /// Trigger names/types treated as a meridian flip. Narrow on purpose: subscribing to every
+        /// sibling trigger would pick up things like DitherAfterExposures, which fires continuously.
+        /// </summary>
+        private static readonly string[] FlipTriggerMarkers = { "MeridianFlip", "Flip" };
 
         /// <summary>How long a single event POST may take before we give up on it.</summary>
         private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(10);
@@ -118,12 +135,27 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             set { reportGuiding = value; RaisePropertyChanged(); }
         }
 
+        private bool reportMeridianFlip = true;
+
+        /// <summary>Report the meridian flip trigger starting and finishing.</summary>
+        [JsonProperty]
+        public bool ReportMeridianFlip {
+            get => reportMeridianFlip;
+            set { reportMeridianFlip = value; RaisePropertyChanged(); }
+        }
+
         public override void SequenceBlockInitialize() {
             // Fresh run: forget what the previous one reported, so the first target of the night
             // is announced again rather than being suppressed as "unchanged".
             lastTarget = null;
             lastGuidingConnected = null;
+            SubscribeToFlipTriggers();
             base.SequenceBlockInitialize();
+        }
+
+        public override void SequenceBlockTeardown() {
+            UnsubscribeFromFlipTriggers();
+            base.SequenceBlockTeardown();
         }
 
         /// <summary>
@@ -247,6 +279,129 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 // without the numbers.
                 return null;
             }
+        }
+
+        // -------------------------------------------------------------- meridian flip
+
+        // Sibling flip triggers we're watching, with the status each was last seen in.
+        private readonly Dictionary<ISequenceTrigger, bool> watchedFlipTriggers =
+            new Dictionary<ISequenceTrigger, bool>();
+
+        /// <summary>
+        /// Watch every meridian-flip trigger in the sequence for its status changing.
+        ///
+        /// Subscribing rather than polling is the point: a flip takes minutes during which no
+        /// sequence items execute, so ShouldTriggerAfter is never called and a poll would only
+        /// notice the flip once it was already over. Status changes arrive as they happen.
+        ///
+        /// This is also why the flip can't be captioned as an instruction - NINA runs the flip's
+        /// items under a TriggerRunner, so they never appear as `previousItem`.
+        /// </summary>
+        private void SubscribeToFlipTriggers() {
+            UnsubscribeFromFlipTriggers();
+            if (!ReportMeridianFlip) {
+                return;
+            }
+
+            try {
+                var root = FindRootContainer();
+                foreach (var trigger in FindTriggers(root)) {
+                    if (ReferenceEquals(trigger, this) || !LooksLikeFlipTrigger(trigger)) {
+                        continue;
+                    }
+                    if (trigger is INotifyPropertyChanged observable) {
+                        watchedFlipTriggers[trigger] = IsRunning(trigger);
+                        observable.PropertyChanged += FlipTrigger_PropertyChanged;
+                        Logger.Debug($"Report Timelapse Events: watching flip trigger '{trigger.Name}'");
+                    }
+                }
+            } catch (Exception ex) {
+                Logger.Debug($"Report Timelapse Events: could not watch flip triggers ({ex.Message})");
+            }
+        }
+
+        /// <summary>
+        /// Drop every handler. A sequence tree outlives a run, so a leaked handler would keep
+        /// firing on later runs and against a stale trigger instance.
+        /// </summary>
+        private void UnsubscribeFromFlipTriggers() {
+            foreach (var trigger in watchedFlipTriggers.Keys.ToList()) {
+                if (trigger is INotifyPropertyChanged observable) {
+                    observable.PropertyChanged -= FlipTrigger_PropertyChanged;
+                }
+            }
+            watchedFlipTriggers.Clear();
+        }
+
+        private void FlipTrigger_PropertyChanged(object sender, PropertyChangedEventArgs e) {
+            if (e?.PropertyName != nameof(ISequenceTrigger.Status)) {
+                return;
+            }
+            if (!(sender is ISequenceTrigger trigger) || !watchedFlipTriggers.TryGetValue(trigger, out var wasRunning)) {
+                return;
+            }
+
+            var running = IsRunning(trigger);
+            if (running == wasRunning) {
+                return;
+            }
+            watchedFlipTriggers[trigger] = running;
+
+            // Fire-and-forget: this is a UI/sequencer notification thread, and blocking it on an
+            // HTTP call would stall the sequencer. SendEventAsync swallows everything.
+            var title = running ? "Meridian Flip started" : "Meridian Flip complete";
+            var detail = trigger.Name;
+            _ = SendFireAndForgetAsync(title, detail, "mount");
+        }
+
+        private async Task SendFireAndForgetAsync(string title, string detail, string category) {
+            try {
+                using (var cts = new CancellationTokenSource(SendTimeout)) {
+                    var client = RtspApiClient.FromProfile(profileService);
+                    await client.SendEventAsync(title, detail, category, DateTime.Now, cts.Token)
+                                .ConfigureAwait(false);
+                }
+            } catch (Exception ex) {
+                Logger.Debug($"Report Timelapse Events: flip event not sent ({ex.Message})");
+            }
+        }
+
+        private static bool IsRunning(ISequenceTrigger trigger) =>
+            trigger.Status == SequenceEntityStatus.RUNNING;
+
+        private static bool LooksLikeFlipTrigger(ISequenceTrigger trigger) {
+            var typeName = trigger.GetType().Name ?? string.Empty;
+            var name = trigger.Name ?? string.Empty;
+            return FlipTriggerMarkers.Any(m =>
+                typeName.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                name.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        /// <summary>Every trigger in the sequence, from the root container down.</summary>
+        private static IEnumerable<ISequenceTrigger> FindTriggers(ISequenceContainer container) {
+            if (container == null) {
+                yield break;
+            }
+            if (container is ITriggerable triggerable && triggerable.Triggers != null) {
+                foreach (var trigger in triggerable.Triggers.ToList()) {
+                    yield return trigger;
+                }
+            }
+            foreach (var item in container.Items.ToList()) {
+                if (item is ISequenceContainer child) {
+                    foreach (var trigger in FindTriggers(child)) {
+                        yield return trigger;
+                    }
+                }
+            }
+        }
+
+        private ISequenceContainer FindRootContainer() {
+            ISequenceContainer container = Parent;
+            while (container?.Parent != null) {
+                container = container.Parent;
+            }
+            return container;
         }
 
         /// <summary>

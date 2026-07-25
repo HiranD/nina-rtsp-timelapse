@@ -23,6 +23,11 @@
                         <TextBlock Text="Target changes" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,1"
+                                ToolTip="Caption the meridian flip starting and finishing. Watches the flip trigger itself, so it works with NINA's built-in flip and with DIY flip triggers alike — instructions run by a trigger can't be captioned any other way.">
+                        <CheckBox IsChecked="{Binding ReportMeridianFlip}" VerticalAlignment="Center" />
+                        <TextBlock Text="Meridian flip" VerticalAlignment="Center" Margin="6,0,0,0" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,1"
                                 ToolTip="Caption guiding being lost and resumed, with the current RMS error. Off by default — useful for diagnosing a night, noisy if your guider reconnects often.">
                         <CheckBox IsChecked="{Binding ReportGuiding}" VerticalAlignment="Center" />
                         <TextBlock Text="Guiding lost / resumed" VerticalAlignment="Center" Margin="6,0,0,0" />
