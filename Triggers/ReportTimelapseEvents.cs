@@ -94,6 +94,10 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         private string pendingDetail;
         private string pendingCategory;
 
+        // Applied only after the app confirms it recorded the event - see Execute. State changes
+        // (target, guiding) must not be marked as reported while the app is still stopped.
+        private Action pendingCommit;
+
         [ImportingConstructor]
         public ReportTimelapseEvents(IProfileService profileService, IGuiderMediator guiderMediator) {
             this.profileService = profileService;
@@ -165,6 +169,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         /// </summary>
         public override bool ShouldTriggerAfter(ISequenceItem previousItem, ISequenceItem nextItem) {
             pendingTitle = pendingDetail = pendingCategory = null;
+            pendingCommit = null;
 
             if (previousItem == null) {
                 return false;  // nothing has completed yet
@@ -193,7 +198,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             var title = pendingTitle;
             var detail = pendingDetail;
             var category = pendingCategory;
+            var commitOnSuccess = pendingCommit;
             pendingTitle = pendingDetail = pendingCategory = null;
+            pendingCommit = null;
 
             try {
                 // Bounded and linked to the sequence's token: a hung localhost POST must not stall
@@ -201,8 +208,18 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 using (var timeout = new CancellationTokenSource(SendTimeout))
                 using (var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token)) {
                     var client = RtspApiClient.FromProfile(profileService);
-                    await client.SendEventAsync(title, detail, category, DateTime.Now, linked.Token)
-                                .ConfigureAwait(false);
+                    var sent = await client.SendEventAsync(title, detail, category, DateTime.Now, linked.Token)
+                                           .ConfigureAwait(false);
+
+                    // Only remember a state change once the app has actually taken it. Capture
+                    // usually starts a few instructions into a sequence, so the target is often
+                    // resolved while the app is still stopped and the send 409s. Committing anyway
+                    // would mark the target as "already reported" and it would never be captioned,
+                    // even though it applies to the whole video. Leaving it uncommitted means the
+                    // next boundary re-detects it and it lands as soon as capture is running.
+                    if (sent) {
+                        commitOnSuccess?.Invoke();
+                    }
                 }
             } catch (Exception ex) {
                 // SendEventAsync already swallows everything; this is a backstop so a surprise here
@@ -219,9 +236,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             if (string.IsNullOrWhiteSpace(target) || target == lastTarget) {
                 return false;
             }
-            lastTarget = target;
             pendingTitle = $"Target: {target}";
             pendingCategory = "target";
+            pendingCommit = () => lastTarget = target;
             return true;
         }
 
@@ -238,16 +255,17 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             }
 
             // First observation establishes the baseline rather than announcing "guiding resumed"
-            // for a guider that was simply already running when the sequence started.
-            var isFirstObservation = lastGuidingConnected == null;
-            lastGuidingConnected = connected;
-            if (isFirstObservation) {
+            // for a guider that was simply already running when the sequence started. This one is
+            // committed immediately - there's nothing to send, so there's nothing to confirm.
+            if (lastGuidingConnected == null) {
+                lastGuidingConnected = connected;
                 return false;
             }
 
             pendingTitle = connected ? "Guiding resumed" : "Guiding lost";
             pendingCategory = "guiding";
             pendingDetail = connected ? FormatRms(info) : null;
+            pendingCommit = () => lastGuidingConnected = connected;
             return true;
         }
 
