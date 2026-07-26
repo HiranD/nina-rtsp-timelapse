@@ -12,6 +12,7 @@ using NINA.Core.Model;
 using NINA.Core.Utility;
 using NINA.Equipment.Equipment.MyGuider;
 using NINA.Equipment.Interfaces.Mediator;
+using NINA.Profile;
 using NINA.Profile.Interfaces;
 using NINA.Sequencer.Container;
 using NINA.Sequencer.SequenceItem;
@@ -27,14 +28,18 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
     /// Adding this trigger to a sequence IS the opt-in - there is no separate enable switch. A
     /// sequence item cannot register a trigger on the running sequence without mutating (and then
     /// serialising into) the user's saved sequence, so a toggle elsewhere could be on while nothing
-    /// was sent, with no way to tell why.
+    /// was sent, with no way to tell why. WHICH events are sent is chosen on the plugin's options
+    /// page (SessionEventCatalog, one toggle per event type, saved per profile) rather than on this
+    /// block: the selection is read live at every decision point, so options changes apply
+    /// immediately - even mid-sequence - and every sequence shares one selection instead of each
+    /// saved sequence carrying its own stale copy.
     ///
     /// Nothing here may fail a sequence: every send is swallowed by RtspApiClient.SendEventAsync,
     /// and Execute catches whatever is left. Events are recorded only while the app is capturing;
     /// when it isn't, the app answers 409 and the send is silently skipped.
     /// </summary>
     [ExportMetadata("Name", "Report Timelapse Events")]
-    [ExportMetadata("Description", "Sends session events (autofocus, filter changes, target, guiding) to the RTSP Timelapse app so they can be shown on the timelapse video.")]
+    [ExportMetadata("Description", "Sends session events (autofocus, filter changes, target, guiding) to the RTSP Timelapse app so they can be shown on the timelapse video. Choose which event types on the plugin's options page.")]
     [ExportMetadata("Icon", "RtspTimelapse_SVG")]
     [ExportMetadata("Category", "RTSP Timelapse")]
     [Export(typeof(ISequenceTrigger))]
@@ -43,37 +48,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         private readonly IProfileService profileService;
         private readonly IGuiderMediator guiderMediator;
         private readonly IFilterWheelMediator filterWheelMediator;
-
-        /// <summary>
-        /// Instruction types worth a caption, matched against the sequence item's type name.
-        ///
-        /// An allowlist rather than a denylist: a night contains hundreds of Take Exposure items,
-        /// and a caption for each would bury the video. Better to show a few meaningful moments and
-        /// extend this list than to filter noise out forever. Matching is on a contains basis so
-        /// NINA's concrete type names (e.g. "MeridianFlip", "SmartMeridianFlip") both hit.
-        ///
-        /// Note this only ever sees instructions in the normal item flow. Anything NINA runs from a
-        /// trigger (auto-dither, autofocus-after-HFR-increase, a DIY meridian flip) executes under a
-        /// TriggerRunner and never arrives as `previousItem`, so it cannot be captioned from here -
-        /// see ReportMeridianFlip for how the flip is picked up instead.
-        ///
-        /// Dither is deliberately absent: it runs every few exposures, which is far too frequent to
-        /// caption.
-        /// </summary>
-        private static readonly string[] ReportableTypes = {
-            "Autofocus",
-            "MeridianFlip",    // NINA's built-in flip instruction; DIY flips come via the trigger
-            "SwitchFilter",
-            "Center",          // Center / CenterAndRotate - plate solve + slew
-            "SolveAndSync",
-            "OpenDomeShutter",
-            "FindHome",
-            "ParkScope",
-            "UnparkScope",
-            "ParkDome",
-            "CoolCamera",
-            "WarmCamera",
-        };
+        private readonly IPluginOptionsAccessor settings;
 
         /// <summary>
         /// Trigger names/types treated as a meridian flip. Narrow on purpose: subscribing to every
@@ -107,51 +82,17 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             this.profileService = profileService;
             this.guiderMediator = guiderMediator;
             this.filterWheelMediator = filterWheelMediator;
+            settings = new PluginOptionsAccessor(profileService, PluginConstants.PluginId);
         }
 
         private ReportTimelapseEvents(ReportTimelapseEvents copyMe)
             : this(copyMe.profileService, copyMe.guiderMediator, copyMe.filterWheelMediator) {
             CopyMetaData(copyMe);
-            ReportInstructions = copyMe.ReportInstructions;
-            ReportTargetChanges = copyMe.ReportTargetChanges;
-            ReportGuiding = copyMe.ReportGuiding;
         }
 
-        private bool reportInstructions = true;
-
-        /// <summary>Report notable instructions as they finish (autofocus, filter change, flip...).</summary>
-        [JsonProperty]
-        public bool ReportInstructions {
-            get => reportInstructions;
-            set { reportInstructions = value; RaisePropertyChanged(); }
-        }
-
-        private bool reportTargetChanges = true;
-
-        /// <summary>Report the imaging target when it changes.</summary>
-        [JsonProperty]
-        public bool ReportTargetChanges {
-            get => reportTargetChanges;
-            set { reportTargetChanges = value; RaisePropertyChanged(); }
-        }
-
-        private bool reportGuiding = false;
-
-        /// <summary>Report guiding being lost and resumed.</summary>
-        [JsonProperty]
-        public bool ReportGuiding {
-            get => reportGuiding;
-            set { reportGuiding = value; RaisePropertyChanged(); }
-        }
-
-        private bool reportMeridianFlip = true;
-
-        /// <summary>Report the meridian flip trigger starting and finishing.</summary>
-        [JsonProperty]
-        public bool ReportMeridianFlip {
-            get => reportMeridianFlip;
-            set { reportMeridianFlip = value; RaisePropertyChanged(); }
-        }
+        /// <summary>The per-profile event selection from the plugin's options page.</summary>
+        private bool IsEnabled(SessionEventToggle toggle) =>
+            SessionEventCatalog.IsEnabled(settings, toggle);
 
         public override void SequenceBlockInitialize() {
             // Fresh run: forget what the previous one reported, so the first target of the night
@@ -182,9 +123,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             }
 
             try {
-                if (ReportTargetChanges && TryTargetChange(previousItem)) { return true; }
-                if (ReportGuiding && TryGuidingChange()) { return true; }
-                if (ReportInstructions && TryInstruction(previousItem)) { return true; }
+                if (IsEnabled(SessionEventCatalog.TargetChanges) && TryTargetChange(previousItem)) { return true; }
+                if (IsEnabled(SessionEventCatalog.Guiding) && TryGuidingChange()) { return true; }
+                if (TryInstruction(previousItem)) { return true; }
             } catch (Exception ex) {
                 // Reading sequence/equipment state must never break the sequence.
                 Logger.Debug($"Report Timelapse Events: could not inspect state ({ex.Message})");
@@ -275,10 +216,11 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             return true;
         }
 
-        /// <summary>Was the instruction that just finished one worth captioning?</summary>
+        /// <summary>Was the instruction that just finished one worth captioning, per the options page?</summary>
         private bool TryInstruction(ISequenceItem previousItem) {
             var typeName = previousItem.GetType().Name;
-            if (!ReportableTypes.Any(t => typeName.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0)) {
+            var toggle = SessionEventCatalog.FindForInstruction(typeName);
+            if (toggle == null || !IsEnabled(toggle)) {
                 return false;
             }
 
@@ -286,7 +228,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             // Filter" on its own says nothing, and it is by far the most frequent reportable
             // instruction - 38 of 63 events on a test night, one every few minutes as the
             // rotation cycles. Naming the filter earns the space; repeats are dropped.
-            if (typeName.IndexOf("SwitchFilter", StringComparison.OrdinalIgnoreCase) >= 0) {
+            if (ReferenceEquals(toggle, SessionEventCatalog.SwitchFilter)) {
                 var filter = CurrentFilterName();
                 if (!string.IsNullOrWhiteSpace(filter)) {
                     if (filter == lastFilter) {
@@ -352,10 +294,10 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         /// </summary>
         private void SubscribeToFlipTriggers() {
             UnsubscribeFromFlipTriggers();
-            if (!ReportMeridianFlip) {
-                return;
-            }
 
+            // Always watch, even when the Meridian flip toggle is off: the toggle is checked at
+            // fire time instead, so flipping it on the options page takes effect mid-run - in
+            // both directions - and the running/not-running edge detection never goes stale.
             try {
                 var root = FindRootContainer();
                 foreach (var trigger in FindTriggers(root)) {
@@ -399,6 +341,12 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 return;
             }
             watchedFlipTriggers[trigger] = running;
+
+            // State bookkeeping above stays unconditional; only the send is gated, so the edge
+            // detection is still correct if the toggle is enabled mid-flip.
+            if (!IsEnabled(SessionEventCatalog.MeridianFlip)) {
+                return;
+            }
 
             // Fire-and-forget: this is a UI/sequencer notification thread, and blocking it on an
             // HTTP call would stall the sequencer. SendEventAsync swallows everything.
@@ -486,8 +434,8 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         public bool Validate() {
             var issues = new ObservableCollection<string>();
-            if (!ReportInstructions && !ReportTargetChanges && !ReportGuiding) {
-                issues.Add("Nothing selected to report - tick at least one option.");
+            if (!SessionEventCatalog.All.Any(IsEnabled)) {
+                issues.Add("Nothing selected to report - enable events in Options > Plugins > RTSP Timelapse Control.");
             }
             Issues = issues;
             RaisePropertyChanged(nameof(Issues));

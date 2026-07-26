@@ -6,33 +6,14 @@
     xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer"
     xmlns:nina="clr-namespace:NINA.View.Sequencer;assembly=NINA.Sequencer">
 
-    <!-- Report Timelapse Events. As elsewhere in this plugin, NINA hides a CheckBox's Content,
-         so each toggle is a CheckBox paired with its own TextBlock. -->
+    <!-- Report Timelapse Events. The per-event-type selection lives on the plugin's options
+         page (SessionEventCatalog), not on the block - one selection for every sequence,
+         applied immediately, instead of a stale copy serialised into each saved sequence. -->
     <DataTemplate DataType="{x:Type local:ReportTimelapseEvents}">
         <nina:SequenceBlockView DataContext="{Binding}">
             <nina:SequenceBlockView.SequenceItemContent>
-                <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="Caption notable instructions as they finish — autofocus, filter changes, meridian flip, plate solves, dithers, park/unpark. Routine exposures are ignored so the video isn't buried in captions.">
-                        <CheckBox IsChecked="{Binding ReportInstructions}" VerticalAlignment="Center" />
-                        <TextBlock Text="Sequence instructions" VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="Caption the imaging target whenever it changes, e.g. “Target: M31”. Sent once per change, not per instruction.">
-                        <CheckBox IsChecked="{Binding ReportTargetChanges}" VerticalAlignment="Center" />
-                        <TextBlock Text="Target changes" VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="Caption the meridian flip starting and finishing. Watches the flip trigger itself, so it works with NINA's built-in flip and with DIY flip triggers alike — instructions run by a trigger can't be captioned any other way.">
-                        <CheckBox IsChecked="{Binding ReportMeridianFlip}" VerticalAlignment="Center" />
-                        <TextBlock Text="Meridian flip" VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="Caption guiding being lost and resumed, with the current RMS error. Off by default — useful for diagnosing a night, noisy if your guider reconnects often.">
-                        <CheckBox IsChecked="{Binding ReportGuiding}" VerticalAlignment="Center" />
-                        <TextBlock Text="Guiding lost / resumed" VerticalAlignment="Center" Margin="6,0,0,0" />
-                    </StackPanel>
-                </StackPanel>
+                <TextBlock VerticalAlignment="Center" Opacity="0.8" TextWrapping="Wrap"
+                           Text="Reports session events to the RTSP Timelapse app. Choose which events under Options → Plugins → RTSP Timelapse Control." />
             </nina:SequenceBlockView.SequenceItemContent>
         </nina:SequenceBlockView>
     </DataTemplate>

@@ -4,11 +4,12 @@
 
 - **New: Report Timelapse Events trigger.** Add it to a sequence and the plugin tells the RTSP
   Timelapse app what's happening during the night, so the app can burn the events onto the finished
-  timelapse as captions at the moment they occurred. Adding the trigger is the on/off switch —
-  there is nothing else to enable — and it reports:
-  - **Sequence instructions** as they finish: autofocus, plate solves, dome shutter, find home,
-    park/unpark. Routine exposures and dithers are deliberately ignored, otherwise a night's
-    captions would bury the video.
+  timelapse as captions at the moment they occurred. Adding the trigger to a sequence is the
+  opt-in; *which* events it reports is chosen on the plugin's options page — one toggle per event
+  type, saved per profile and applied immediately, even mid-sequence. It can report:
+  - **Sequence instructions** as they finish — autofocus, plate solves, dome shutter, find home,
+    park/unpark, camera cool/warm — each type with its own toggle. Routine exposures and dithers
+    are deliberately ignored, otherwise a night's captions would bury the video.
   - **Filter changes by name** — "Filter: Ha" rather than "Switch Filter", read from the filter
     wheel as the switch completes, and skipped when the same filter is re-selected. Filter switches
     are the most frequent reportable instruction (38 of 63 events on a test night, one every few
