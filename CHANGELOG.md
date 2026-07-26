@@ -6,7 +6,8 @@
   Timelapse app what's happening during the night, so the app can burn the events onto the finished
   timelapse as captions at the moment they occurred. Adding the trigger to a sequence is the
   opt-in; *which* events it reports is chosen on the plugin's options page — one toggle per event
-  type, saved per profile and applied immediately, even mid-sequence. It can report:
+  type, saved per profile and applied immediately, even mid-sequence. Target changes, the meridian
+  flip and centering are on by default; everything else is opt-in. It can report:
   - **Sequence instructions** as they finish — autofocus, plate solves, dome shutter, find home,
     park/unpark, camera cool/warm — each type with its own toggle. Routine exposures and dithers
     are deliberately ignored, otherwise a night's captions would bury the video.
@@ -19,7 +20,7 @@
     alike.
   - **Target changes**, e.g. "Target: M31" — sent once when the target actually changes, not once
     per instruction.
-  - **Guiding lost / resumed**, with the current RMS error (off by default).
+  - **Guiding lost / resumed**, with the current RMS error.
 - Instructions that N.I.N.A. runs *from a trigger* — auto-dither, autofocus-after-HFR-increase, the
   instructions inside a DIY meridian flip — execute outside the normal sequence flow, so they can't
   be captioned individually. The meridian flip is covered by watching its trigger; the others are

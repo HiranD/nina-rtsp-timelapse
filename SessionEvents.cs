@@ -71,15 +71,18 @@ namespace NINA.RtspTimelapse.Plugin {
             true, "MeridianFlip");
 
         // Instruction events - gated by the type name of the instruction that just finished.
+        // Only centering is on by default: it marks each target acquisition. The rest are
+        // opt-in so a fresh install captions the essentials (target, flip, centering) without
+        // burying the video in housekeeping.
         public static readonly SessionEventToggle Autofocus = new SessionEventToggle(
             "ReportAutofocus", "Autofocus",
             "Caption autofocus runs as they finish.",
-            true, "Autofocus");
+            false, "Autofocus");
 
         public static readonly SessionEventToggle SwitchFilter = new SessionEventToggle(
             "ReportSwitchFilter", "Filter changes",
             "Caption the filter by name as it changes - \"Filter: Ha\" rather than \"Switch Filter\". Re-selecting the same filter is skipped.",
-            true, "SwitchFilter");
+            false, "SwitchFilter");
 
         public static readonly SessionEventToggle Center = new SessionEventToggle(
             "ReportCenter", "Center / rotate",
@@ -89,42 +92,42 @@ namespace NINA.RtspTimelapse.Plugin {
         public static readonly SessionEventToggle SolveAndSync = new SessionEventToggle(
             "ReportSolveAndSync", "Solve and sync",
             "Caption Solve & Sync plate solves.",
-            true, "SolveAndSync");
+            false, "SolveAndSync");
 
         public static readonly SessionEventToggle OpenDomeShutter = new SessionEventToggle(
             "ReportOpenDomeShutter", "Open dome shutter",
             "Caption the dome shutter opening.",
-            true, "OpenDomeShutter");
+            false, "OpenDomeShutter");
 
         public static readonly SessionEventToggle ParkDome = new SessionEventToggle(
             "ReportParkDome", "Park dome",
             "Caption the dome parking.",
-            true, "ParkDome");
+            false, "ParkDome");
 
         public static readonly SessionEventToggle FindHome = new SessionEventToggle(
             "ReportFindHome", "Find home",
             "Caption the mount finding home.",
-            true, "FindHome");
+            false, "FindHome");
 
         public static readonly SessionEventToggle ParkScope = new SessionEventToggle(
             "ReportParkScope", "Park scope",
             "Caption the mount parking.",
-            true, "ParkScope");
+            false, "ParkScope");
 
         public static readonly SessionEventToggle UnparkScope = new SessionEventToggle(
             "ReportUnparkScope", "Unpark scope",
             "Caption the mount unparking.",
-            true, "UnparkScope");
+            false, "UnparkScope");
 
         public static readonly SessionEventToggle CoolCamera = new SessionEventToggle(
             "ReportCoolCamera", "Cool camera",
             "Caption camera cooldown finishing.",
-            true, "CoolCamera");
+            false, "CoolCamera");
 
         public static readonly SessionEventToggle WarmCamera = new SessionEventToggle(
             "ReportWarmCamera", "Warm camera",
             "Caption camera warm-up finishing.",
-            true, "WarmCamera");
+            false, "WarmCamera");
 
         public static readonly IReadOnlyList<SessionEventToggle> StateToggles = new[] {
             TargetChanges, Guiding, MeridianFlip,
