@@ -6,9 +6,13 @@
   Timelapse app what's happening during the night, so the app can burn the events onto the finished
   timelapse as captions at the moment they occurred. Adding the trigger is the on/off switch —
   there is nothing else to enable — and it reports:
-  - **Sequence instructions** as they finish: autofocus, filter changes, plate solves, dome
-    shutter, find home, park/unpark. Routine exposures and dithers are deliberately ignored,
-    otherwise a night's captions would bury the video.
+  - **Sequence instructions** as they finish: autofocus, plate solves, dome shutter, find home,
+    park/unpark. Routine exposures and dithers are deliberately ignored, otherwise a night's
+    captions would bury the video.
+  - **Filter changes by name** — "Filter: Ha" rather than "Switch Filter", read from the filter
+    wheel as the switch completes, and skipped when the same filter is re-selected. Filter switches
+    are the most frequent reportable instruction (38 of 63 events on a test night, one every few
+    minutes as the rotation cycles), so naming the filter is what earns them the space.
   - **Meridian flip**, start and finish. This watches the flip *trigger* rather than the
     instructions inside it, so it works with N.I.N.A.'s built-in flip and with DIY flip triggers
     alike.

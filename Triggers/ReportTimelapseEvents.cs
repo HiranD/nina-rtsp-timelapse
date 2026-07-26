@@ -42,6 +42,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
     public class ReportTimelapseEvents : SequenceTrigger, IValidatable {
         private readonly IProfileService profileService;
         private readonly IGuiderMediator guiderMediator;
+        private readonly IFilterWheelMediator filterWheelMediator;
 
         /// <summary>
         /// Instruction types worth a caption, matched against the sequence item's type name.
@@ -86,6 +87,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         // Last values sent, so target/guiding report on CHANGE rather than on every instruction
         // boundary. Reset per sequence run in SequenceBlockInitialize.
         private string lastTarget;
+        private string lastFilter;
         private bool? lastGuidingConnected;
 
         // What Execute should send, decided in ShouldTriggerAfter. Holding it here keeps the
@@ -99,13 +101,16 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         private Action pendingCommit;
 
         [ImportingConstructor]
-        public ReportTimelapseEvents(IProfileService profileService, IGuiderMediator guiderMediator) {
+        public ReportTimelapseEvents(IProfileService profileService,
+                                     IGuiderMediator guiderMediator,
+                                     IFilterWheelMediator filterWheelMediator) {
             this.profileService = profileService;
             this.guiderMediator = guiderMediator;
+            this.filterWheelMediator = filterWheelMediator;
         }
 
         private ReportTimelapseEvents(ReportTimelapseEvents copyMe)
-            : this(copyMe.profileService, copyMe.guiderMediator) {
+            : this(copyMe.profileService, copyMe.guiderMediator, copyMe.filterWheelMediator) {
             CopyMetaData(copyMe);
             ReportInstructions = copyMe.ReportInstructions;
             ReportTargetChanges = copyMe.ReportTargetChanges;
@@ -152,6 +157,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             // Fresh run: forget what the previous one reported, so the first target of the night
             // is announced again rather than being suppressed as "unchanged".
             lastTarget = null;
+            lastFilter = null;
             lastGuidingConnected = null;
             SubscribeToFlipTriggers();
             base.SequenceBlockInitialize();
@@ -176,7 +182,7 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             }
 
             try {
-                if (ReportTargetChanges && TryTargetChange()) { return true; }
+                if (ReportTargetChanges && TryTargetChange(previousItem)) { return true; }
                 if (ReportGuiding && TryGuidingChange()) { return true; }
                 if (ReportInstructions && TryInstruction(previousItem)) { return true; }
             } catch (Exception ex) {
@@ -230,9 +236,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         // ------------------------------------------------------------------ event sources
 
-        /// <summary>Target changed since the last report? Walks up for the enclosing DSO container.</summary>
-        private bool TryTargetChange() {
-            var target = FindTargetName();
+        /// <summary>Target changed since the last report? Resolved from the completed item.</summary>
+        private bool TryTargetChange(ISequenceItem previousItem) {
+            var target = FindTargetName(previousItem);
             if (string.IsNullOrWhiteSpace(target) || target == lastTarget) {
                 return false;
             }
@@ -276,12 +282,41 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 return false;
             }
 
+            // A filter switch is worth a caption only for *which* filter it selected. "Switch
+            // Filter" on its own says nothing, and it is by far the most frequent reportable
+            // instruction - 38 of 63 events on a test night, one every few minutes as the
+            // rotation cycles. Naming the filter earns the space; repeats are dropped.
+            if (typeName.IndexOf("SwitchFilter", StringComparison.OrdinalIgnoreCase) >= 0) {
+                var filter = CurrentFilterName();
+                if (!string.IsNullOrWhiteSpace(filter)) {
+                    if (filter == lastFilter) {
+                        return false;  // same filter re-selected - nothing changed to show
+                    }
+                    pendingTitle = $"Filter: {filter}";
+                    pendingCategory = "filter";
+                    pendingCommit = () => lastFilter = filter;
+                    return true;
+                }
+                // No wheel connected or no selection - fall through and report the instruction
+                // itself rather than losing the event entirely.
+            }
+
             // The display name is what the user sees in their sequence, so it reads better on the
             // video than the type name; fall back to the type when a plugin leaves Name unset.
             var name = string.IsNullOrWhiteSpace(previousItem.Name) ? typeName : previousItem.Name;
             pendingTitle = name.Trim();
             pendingCategory = "sequence";
             return true;
+        }
+
+        /// <summary>Currently selected filter's name, or null if it can't be read.</summary>
+        private string CurrentFilterName() {
+            try {
+                var name = filterWheelMediator?.GetInfo()?.SelectedFilter?.Name;
+                return string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+            } catch (Exception) {
+                return null;  // wheel disconnected mid-read; the caller falls back
+            }
         }
 
         /// <summary>Current guiding error as a caption detail line, or null if unavailable.</summary>
@@ -423,11 +458,18 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         }
 
         /// <summary>
-        /// Nearest enclosing target name, walking up the container chain (the same approach Ground
-        /// Station uses). Returns null outside a target container - e.g. in a startup sequence.
+        /// Target enclosing the instruction that just finished, walking up its container chain.
+        ///
+        /// Resolved from the *item*, not from this trigger. The trigger belongs on the sequence
+        /// root, so walking up from its own Parent starts at the root and never descends into the
+        /// DeepSkyObjectContainers below it - it would return null for every sequence. The item
+        /// that just ran is inside the target container, so its ancestry does reach it. (Ground
+        /// Station's Utilities.FindDsoInfo resolves from item context for the same reason.)
+        ///
+        /// Returns null for items outside any target container, e.g. a startup sequence.
         /// </summary>
-        private string FindTargetName() {
-            ISequenceContainer container = Parent;
+        private static string FindTargetName(ISequenceItem item) {
+            ISequenceContainer container = item?.Parent;
             while (container != null) {
                 if (container is IDeepSkyObjectContainer dso && dso.Target?.DeepSkyObject != null) {
                     var name = dso.Target.DeepSkyObject.Name;
