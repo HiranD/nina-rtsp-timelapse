@@ -23,7 +23,7 @@ This plugin is a thin client over the RTSP Timelapse app's **local HTTP control 
 | Instruction | API call | Notes |
 |---|---|---|
 | **Start Timelapse Capture** | `POST /capture/start` | Starts capture (no-op if already capturing). *Wait for capture to start* (default on) waits for the first frame; *Stop capturing if the sequence is stopped* (default off) — tick to stop capture if you abort before a Stop block (off keeps capture running through a stop/resume). |
-| **Stop Timelapse Capture** | `POST /capture/stop` (+ `/video/create`) | Stops capture, then — if *Create video when finished* is ticked (default on) — renders this session's video (only its frames; uploads to Discord if the app is configured). |
+| **Stop Timelapse Capture** | `POST /capture/stop` (+ `/video/create`) | Stops capture, then — if *Create video when finished* is ticked (default on) — renders this session's video (only its frames; delivered per the app's delivery settings). |
 | **Scheduled Timelapse** | `POST /capture/schedule` | One block: starts capture and tells the **app** to auto-stop at a chosen time (Source like Nautical Dawn + offset, reusing NINA's Wait-for-Time picker) and optionally render. No Stop block needed; the app owns the timer, so it stops at the time **even if the sequence is stopped**. Non-blocking — the sequence continues immediately. |
 
 **Dock panel** (*RTSP Timelapse*, on the Imaging tab): live connection/version,
@@ -63,7 +63,7 @@ automatically (see the `CopyToNinaPlugins` target in the csproj) for quick itera
    - **Start Timelapse Capture** at the start (waits for the first frame by default).
    - **Stop Timelapse Capture** at the end — leave *Create video when finished* ticked to render
      this session's video (only its frames, so an earlier same-evening test capture sharing the date
-     folder isn't pulled in; uploads to Discord if the app is configured).
+     folder isn't pulled in; delivered per the app's delivery settings).
 
    Or use **one block**: add **Scheduled Timelapse** — it starts capture and the **app** auto-stops +
    renders at a chosen time (no Stop block). It's **non-blocking** (the sequence continues), and the

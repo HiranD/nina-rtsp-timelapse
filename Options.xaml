@@ -43,7 +43,7 @@
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
                            Text="• Video Export tab → pick a preset and set the output location (where the timelapse videos are saved)." />
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
-                           Text="• Optional: Integrations tab → Discord webhook to auto-upload each finished video." />
+                           Text="• Optional: Integrations tab → set up delivery to send each finished video automatically." />
             </StackPanel>
 
             <!-- Which block to use. -->
@@ -84,7 +84,7 @@
             <!-- About the app (this Plugins tab is the main way people discover it). -->
             <Separator Margin="0,12,0,8" Opacity="0.3" />
             <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Text="RTSP Timelapse Capture is a free, open-source Windows app that records timelapses from any RTSP / IP camera — with smart overnight / twilight scheduling, one-click MP4 export, and automatic Discord upload. This plugin lets N.I.N.A. start/stop capture and render the video as part of your sequence." />
+                       Text="RTSP Timelapse Capture is a free, open-source Windows app that records timelapses from any RTSP / IP camera — with smart overnight / twilight scheduling, one-click MP4 export, and automatic delivery of each finished video. This plugin lets N.I.N.A. start/stop capture and render the video as part of your sequence." />
             <TextBlock Margin="0,6,0,0" FontSize="12">
                 <Hyperlink NavigateUri="https://github.com/HiranD/RTSP-Timelapse-Capture"
                            RequestNavigate="Hyperlink_RequestNavigate">Get the RTSP Timelapse Capture app →</Hyperlink>

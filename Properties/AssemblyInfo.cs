@@ -19,7 +19,7 @@ using System.Runtime.InteropServices;
 
 // [MANDATORY] Short description shown in the plugin list.
 [assembly: AssemblyMetadata("ShortDescription",
-    "Start/stop RTSP timelapse capture and render videos from your N.I.N.A. sequence — the app can auto-upload each finished timelapse to Discord.")]
+    "Start/stop RTSP timelapse capture and render videos from your N.I.N.A. sequence — the app can deliver each finished timelapse automatically.")]
 
 // [OPTIONAL] Long (markdown) description shown on the plugin detail page.
 [assembly: AssemblyMetadata("LongDescription",
@@ -32,14 +32,14 @@ using System.Runtime.InteropServices;
     + "- Smart overnight scheduling with twilight calculations (civil / nautical / astronomical "
     + "darkness) or manual times, planned across a calendar.\n"
     + "- One-click MP4 export with presets — frame rate, speed-up, CRF quality and resolution.\n"
-    + "- Auto-create the video after each night's session and auto-post it to a Discord channel.\n"
+    + "- Auto-create the video after each night's session and have the app deliver it automatically.\n"
     + "- Minimize-to-tray and start-with-Windows for unattended, headless rigs.\n\n"
     + "### What this plugin adds\n"
     + "Sequencer instructions to **Start Capture**, **Stop Capture** and **Create Timelapse Video**, "
     + "plus an imaging-tab dock panel showing live capture status. Let N.I.N.A. run your scenery or "
     + "all-sky timelapse for exactly the duration of your imaging session, then render it automatically. "
-    + "Create Timelapse Video honours the app's Discord settings, so the finished clip can post straight "
-    + "to your Discord channel.\n\n"
+    + "Create Timelapse Video honours the app's delivery settings, so the finished clip can be sent "
+    + "on automatically.\n\n"
     + "### Session events on your timelapse\n"
     + "Add the **Report Timelapse Events** trigger to a sequence and the plugin tells the app what "
     + "happened during the night — autofocus runs, filter changes, meridian flips, target changes, "
