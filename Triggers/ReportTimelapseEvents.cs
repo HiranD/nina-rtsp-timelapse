@@ -131,16 +131,24 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 return false;  // nothing has completed yet
             }
 
-            try {
-                if (IsEnabled(SessionEventCatalog.TargetChanges)) { TryTargetChange(previousItem); }
-                if (IsEnabled(SessionEventCatalog.Guiding)) { TryGuidingChange(); }
-                TryInstruction(previousItem);
-            } catch (Exception ex) {
-                // Reading sequence/equipment state must never break the sequence.
-                Logger.Debug($"Report Timelapse Events: could not inspect state ({ex.Message})");
-            }
+            // Each source is guarded on its own: a guider driver faulting in GetInfo(), or a
+            // misbehaving third-party target container, must not stop the OTHER sources from
+            // reporting - an instruction event skipped that way would be lost for good, while
+            // the faulting source itself only loses a boundary it would re-detect anyway.
+            Guarded(() => TryTargetChange(previousItem), "target");
+            Guarded(TryGuidingChange, "guiding");
+            Guarded(() => TryInstruction(previousItem), "instruction");
 
             return pending.Count > 0;
+        }
+
+        /// <summary>Reading sequence/equipment state must never break the sequence.</summary>
+        private static void Guarded(Action detect, string source) {
+            try {
+                detect();
+            } catch (Exception ex) {
+                Logger.Debug($"Report Timelapse Events: could not inspect {source} state ({ex.Message})");
+            }
         }
 
         // We report what has happened, so everything is decided after an item completes.
@@ -193,6 +201,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         /// <summary>Queue the target changing since the last report. Resolved from the completed item.</summary>
         private void TryTargetChange(ISequenceItem previousItem) {
+            if (!IsEnabled(SessionEventCatalog.TargetChanges)) {
+                return;
+            }
             var target = FindTargetName(previousItem);
             if (string.IsNullOrWhiteSpace(target) || target == lastTarget) {
                 return;
@@ -206,6 +217,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         /// <summary>Queue guiding connecting/disconnecting since the last report.</summary>
         private void TryGuidingChange() {
+            if (!IsEnabled(SessionEventCatalog.Guiding)) {
+                return;
+            }
             var info = guiderMediator?.GetInfo();
             if (info == null) {
                 return;
