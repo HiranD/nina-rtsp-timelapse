@@ -65,15 +65,21 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         private string lastFilter;
         private bool? lastGuidingConnected;
 
+        /// <summary>
+        /// One event queued for the boundary just crossed. Commit is applied only after the app
+        /// confirms it recorded the event - see Execute. State changes (target, guiding) must not
+        /// be marked as reported while the app is still stopped.
+        /// </summary>
+        private sealed class PendingEvent {
+            public string Title;
+            public string Detail;
+            public string Category;
+            public Action Commit;
+        }
+
         // What Execute should send, decided in ShouldTriggerAfter. Holding it here keeps the
         // decision and the send in one place per boundary; NINA calls the two back to back.
-        private string pendingTitle;
-        private string pendingDetail;
-        private string pendingCategory;
-
-        // Applied only after the app confirms it recorded the event - see Execute. State changes
-        // (target, guiding) must not be marked as reported while the app is still stopped.
-        private Action pendingCommit;
+        private readonly List<PendingEvent> pending = new List<PendingEvent>();
 
         [ImportingConstructor]
         public ReportTimelapseEvents(IProfileService profileService,
@@ -110,62 +116,70 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         }
 
         /// <summary>
-        /// Decide whether the boundary just crossed is worth an event, and remember what to send.
-        /// Checked in priority order so one boundary produces at most one caption - a target change
-        /// matters more than the instruction that revealed it.
+        /// Decide which events the boundary just crossed is worth, and remember what to send.
+        /// Every source is evaluated independently - a boundary can queue a target change AND the
+        /// instruction that revealed it. State events (target, guiding) would merely be delayed by
+        /// losing a boundary, since they re-compare live state next time; an instruction event
+        /// describes the specific item that just completed, so a boundary it loses is lost for
+        /// good. The order here only decides caption order: "Target: M31" reads better before
+        /// "Center" than after it.
         /// </summary>
         public override bool ShouldTriggerAfter(ISequenceItem previousItem, ISequenceItem nextItem) {
-            pendingTitle = pendingDetail = pendingCategory = null;
-            pendingCommit = null;
+            pending.Clear();
 
             if (previousItem == null) {
                 return false;  // nothing has completed yet
             }
 
             try {
-                if (IsEnabled(SessionEventCatalog.TargetChanges) && TryTargetChange(previousItem)) { return true; }
-                if (IsEnabled(SessionEventCatalog.Guiding) && TryGuidingChange()) { return true; }
-                if (TryInstruction(previousItem)) { return true; }
+                if (IsEnabled(SessionEventCatalog.TargetChanges)) { TryTargetChange(previousItem); }
+                if (IsEnabled(SessionEventCatalog.Guiding)) { TryGuidingChange(); }
+                TryInstruction(previousItem);
             } catch (Exception ex) {
                 // Reading sequence/equipment state must never break the sequence.
                 Logger.Debug($"Report Timelapse Events: could not inspect state ({ex.Message})");
             }
 
-            return false;
+            return pending.Count > 0;
         }
 
         // We report what has happened, so everything is decided after an item completes.
         public override bool ShouldTrigger(ISequenceItem previousItem, ISequenceItem nextItem) => false;
 
         public override async Task Execute(ISequenceContainer context, IProgress<ApplicationStatus> progress, CancellationToken ct) {
-            if (string.IsNullOrWhiteSpace(pendingTitle)) {
+            if (pending.Count == 0) {
                 return;
             }
 
-            var title = pendingTitle;
-            var detail = pendingDetail;
-            var category = pendingCategory;
-            var commitOnSuccess = pendingCommit;
-            pendingTitle = pendingDetail = pendingCategory = null;
-            pendingCommit = null;
+            var events = pending.ToList();
+            pending.Clear();
 
             try {
-                // Bounded and linked to the sequence's token: a hung localhost POST must not stall
-                // the sequence, and stopping the sequence should abandon the send immediately.
-                using (var timeout = new CancellationTokenSource(SendTimeout))
-                using (var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token)) {
-                    var client = RtspApiClient.FromProfile(profileService);
-                    var sent = await client.SendEventAsync(title, detail, category, DateTime.Now, linked.Token)
-                                           .ConfigureAwait(false);
+                var client = RtspApiClient.FromProfile(profileService);
+                foreach (var evt in events) {
+                    if (ct.IsCancellationRequested) {
+                        return;  // sequence is stopping; the rest can stay unsent
+                    }
 
-                    // Only remember a state change once the app has actually taken it. Capture
-                    // usually starts a few instructions into a sequence, so the target is often
-                    // resolved while the app is still stopped and the send 409s. Committing anyway
-                    // would mark the target as "already reported" and it would never be captioned,
-                    // even though it applies to the whole video. Leaving it uncommitted means the
-                    // next boundary re-detects it and it lands as soon as capture is running.
-                    if (sent) {
-                        commitOnSuccess?.Invoke();
+                    // Bounded and linked to the sequence's token: a hung localhost POST must not
+                    // stall the sequence, and stopping the sequence should abandon the send
+                    // immediately. The timeout is per event so an earlier slow send can't starve
+                    // the ones behind it.
+                    using (var timeout = new CancellationTokenSource(SendTimeout))
+                    using (var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeout.Token)) {
+                        var sent = await client.SendEventAsync(evt.Title, evt.Detail, evt.Category, DateTime.Now, linked.Token)
+                                               .ConfigureAwait(false);
+
+                        // Only remember a state change once the app has actually taken it. Capture
+                        // usually starts a few instructions into a sequence, so the target is often
+                        // resolved while the app is still stopped and the send 409s. Committing
+                        // anyway would mark the target as "already reported" and it would never be
+                        // captioned, even though it applies to the whole video. Leaving it
+                        // uncommitted means the next boundary re-detects it and it lands as soon
+                        // as capture is running.
+                        if (sent) {
+                            evt.Commit?.Invoke();
+                        }
                     }
                 }
             } catch (Exception ex) {
@@ -177,28 +191,29 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         // ------------------------------------------------------------------ event sources
 
-        /// <summary>Target changed since the last report? Resolved from the completed item.</summary>
-        private bool TryTargetChange(ISequenceItem previousItem) {
+        /// <summary>Queue the target changing since the last report. Resolved from the completed item.</summary>
+        private void TryTargetChange(ISequenceItem previousItem) {
             var target = FindTargetName(previousItem);
             if (string.IsNullOrWhiteSpace(target) || target == lastTarget) {
-                return false;
+                return;
             }
-            pendingTitle = $"Target: {target}";
-            pendingCategory = "target";
-            pendingCommit = () => lastTarget = target;
-            return true;
+            pending.Add(new PendingEvent {
+                Title = $"Target: {target}",
+                Category = "target",
+                Commit = () => lastTarget = target,
+            });
         }
 
-        /// <summary>Guiding connected/disconnected since the last report?</summary>
-        private bool TryGuidingChange() {
+        /// <summary>Queue guiding connecting/disconnecting since the last report.</summary>
+        private void TryGuidingChange() {
             var info = guiderMediator?.GetInfo();
             if (info == null) {
-                return false;
+                return;
             }
 
             var connected = info.Connected;
             if (lastGuidingConnected == connected) {
-                return false;
+                return;
             }
 
             // First observation establishes the baseline rather than announcing "guiding resumed"
@@ -206,22 +221,23 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             // committed immediately - there's nothing to send, so there's nothing to confirm.
             if (lastGuidingConnected == null) {
                 lastGuidingConnected = connected;
-                return false;
+                return;
             }
 
-            pendingTitle = connected ? "Guiding resumed" : "Guiding lost";
-            pendingCategory = "guiding";
-            pendingDetail = connected ? FormatRms(info) : null;
-            pendingCommit = () => lastGuidingConnected = connected;
-            return true;
+            pending.Add(new PendingEvent {
+                Title = connected ? "Guiding resumed" : "Guiding lost",
+                Detail = connected ? FormatRms(info) : null,
+                Category = "guiding",
+                Commit = () => lastGuidingConnected = connected,
+            });
         }
 
-        /// <summary>Was the instruction that just finished one worth captioning, per the options page?</summary>
-        private bool TryInstruction(ISequenceItem previousItem) {
+        /// <summary>Queue the instruction that just finished, if it's one worth captioning per the options page.</summary>
+        private void TryInstruction(ISequenceItem previousItem) {
             var typeName = previousItem.GetType().Name;
             var toggle = SessionEventCatalog.FindForInstruction(typeName);
             if (toggle == null || !IsEnabled(toggle)) {
-                return false;
+                return;
             }
 
             // A filter switch is worth a caption only for *which* filter it selected. "Switch
@@ -232,12 +248,14 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                 var filter = CurrentFilterName();
                 if (!string.IsNullOrWhiteSpace(filter)) {
                     if (filter == lastFilter) {
-                        return false;  // same filter re-selected - nothing changed to show
+                        return;  // same filter re-selected - nothing changed to show
                     }
-                    pendingTitle = $"Filter: {filter}";
-                    pendingCategory = "filter";
-                    pendingCommit = () => lastFilter = filter;
-                    return true;
+                    pending.Add(new PendingEvent {
+                        Title = $"Filter: {filter}",
+                        Category = "filter",
+                        Commit = () => lastFilter = filter,
+                    });
+                    return;
                 }
                 // No wheel connected or no selection - fall through and report the instruction
                 // itself rather than losing the event entirely.
@@ -246,9 +264,10 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
             // The display name is what the user sees in their sequence, so it reads better on the
             // video than the type name; fall back to the type when a plugin leaves Name unset.
             var name = string.IsNullOrWhiteSpace(previousItem.Name) ? typeName : previousItem.Name;
-            pendingTitle = name.Trim();
-            pendingCategory = "sequence";
-            return true;
+            pending.Add(new PendingEvent {
+                Title = name.Trim(),
+                Category = "sequence",
+            });
         }
 
         /// <summary>Currently selected filter's name, or null if it can't be read.</summary>

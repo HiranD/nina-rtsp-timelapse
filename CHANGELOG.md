@@ -21,6 +21,9 @@
   - **Target changes**, e.g. "Target: M31" — sent once when the target actually changes, not once
     per instruction.
   - **Guiding lost / resumed**, with the current RMS error.
+- When several events land on the same sequence boundary — e.g. a Center instruction finishing is
+  also the moment a new target is detected — every one of them is reported, in a sensible order,
+  rather than only the most important.
 - Instructions that N.I.N.A. runs *from a trigger* — auto-dither, autofocus-after-HFR-increase, the
   instructions inside a DIY meridian flip — execute outside the normal sequence flow, so they can't
   be captioned individually. The meridian flip is covered by watching its trigger; the others are
