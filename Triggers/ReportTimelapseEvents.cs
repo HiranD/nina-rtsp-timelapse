@@ -311,9 +311,12 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
 
         // -------------------------------------------------------------- meridian flip
 
-        // Sibling flip triggers we're watching, with the status each was last seen in.
+        // Sibling flip triggers we're watching, with the status each was last seen in. Guarded by
+        // flipTriggersLock: PropertyChanged can arrive on whatever thread changed the trigger's
+        // Status, racing the sequencer thread's subscribe/teardown.
         private readonly Dictionary<ISequenceTrigger, bool> watchedFlipTriggers =
             new Dictionary<ISequenceTrigger, bool>();
+        private readonly object flipTriggersLock = new object();
 
         /// <summary>
         /// Watch every meridian-flip trigger in the sequence for its status changing.
@@ -338,7 +341,9 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
                         continue;
                     }
                     if (trigger is INotifyPropertyChanged observable) {
-                        watchedFlipTriggers[trigger] = IsRunning(trigger);
+                        lock (flipTriggersLock) {
+                            watchedFlipTriggers[trigger] = IsRunning(trigger);
+                        }
                         observable.PropertyChanged += FlipTrigger_PropertyChanged;
                         Logger.Debug($"Report Timelapse Events: watching flip trigger '{trigger.Name}'");
                     }
@@ -353,39 +358,53 @@ namespace NINA.RtspTimelapse.Plugin.Triggers {
         /// firing on later runs and against a stale trigger instance.
         /// </summary>
         private void UnsubscribeFromFlipTriggers() {
-            foreach (var trigger in watchedFlipTriggers.Keys.ToList()) {
+            // Empty the map before detaching: a Status change arriving in between finds nothing
+            // and returns, which during teardown is exactly what should happen.
+            List<ISequenceTrigger> watched;
+            lock (flipTriggersLock) {
+                watched = watchedFlipTriggers.Keys.ToList();
+                watchedFlipTriggers.Clear();
+            }
+            foreach (var trigger in watched) {
                 if (trigger is INotifyPropertyChanged observable) {
                     observable.PropertyChanged -= FlipTrigger_PropertyChanged;
                 }
             }
-            watchedFlipTriggers.Clear();
         }
 
         private void FlipTrigger_PropertyChanged(object sender, PropertyChangedEventArgs e) {
-            if (e?.PropertyName != nameof(ISequenceTrigger.Status)) {
-                return;
-            }
-            if (!(sender is ISequenceTrigger trigger) || !watchedFlipTriggers.TryGetValue(trigger, out var wasRunning)) {
-                return;
-            }
+            try {
+                if (e?.PropertyName != nameof(ISequenceTrigger.Status)) {
+                    return;
+                }
+                if (!(sender is ISequenceTrigger trigger)) {
+                    return;
+                }
 
-            var running = IsRunning(trigger);
-            if (running == wasRunning) {
-                return;
-            }
-            watchedFlipTriggers[trigger] = running;
+                var running = IsRunning(trigger);
+                lock (flipTriggersLock) {
+                    if (!watchedFlipTriggers.TryGetValue(trigger, out var wasRunning) || running == wasRunning) {
+                        return;
+                    }
+                    watchedFlipTriggers[trigger] = running;
+                }
 
-            // State bookkeeping above stays unconditional; only the send is gated, so the edge
-            // detection is still correct if the toggle is enabled mid-flip.
-            if (!IsEnabled(SessionEventCatalog.MeridianFlip)) {
-                return;
-            }
+                // State bookkeeping above stays unconditional; only the send is gated, so the edge
+                // detection is still correct if the toggle is enabled mid-flip.
+                if (!IsEnabled(SessionEventCatalog.MeridianFlip)) {
+                    return;
+                }
 
-            // Fire-and-forget: this is a UI/sequencer notification thread, and blocking it on an
-            // HTTP call would stall the sequencer. SendEventAsync swallows everything.
-            var title = running ? "Meridian Flip started" : "Meridian Flip complete";
-            var detail = trigger.Name;
-            _ = SendFireAndForgetAsync(title, detail, "mount");
+                // Fire-and-forget: this is a UI/sequencer notification thread, and blocking it on
+                // an HTTP call would stall the sequencer. SendEventAsync swallows everything.
+                var title = running ? "Meridian Flip started" : "Meridian Flip complete";
+                var detail = trigger.Name;
+                _ = SendFireAndForgetAsync(title, detail, "mount");
+            } catch (Exception ex) {
+                // Never throw back into whoever raised the notification - that could be the
+                // sequencer mid-flip.
+                Logger.Debug($"Report Timelapse Events: flip status change not handled ({ex.Message})");
+            }
         }
 
         private async Task SendFireAndForgetAsync(string title, string detail, string category) {
