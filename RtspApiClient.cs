@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NINA.Core.Utility;
 using NINA.Profile;
 using NINA.Profile.Interfaces;
 
@@ -95,6 +97,66 @@ namespace NINA.RtspTimelapse.Plugin {
                 ? null
                 : JsonConvert.SerializeObject(new { since = since.Trim() });
             return PostAsync("/video/create", body, token);
+        }
+
+        /// <summary>
+        /// POST /events: record a session event, shown on the timelapse as a caption.
+        /// </summary>
+        /// <remarks>
+        /// Never throws. Event reporting is a nice-to-have running alongside someone's imaging
+        /// session - it must not be able to fail their sequence. Every outcome is swallowed:
+        /// <list type="bullet">
+        /// <item>409 - the app isn't capturing, so there are no frames to attach the event to.
+        /// Expected whenever a sequence runs without a timelapse; silent by design.</item>
+        /// <item>404 - the app predates /events. Reported once per process with the version
+        /// needed, since the plugin manifest has no way to express a dependency on the app.</item>
+        /// <item>anything else - logged and dropped.</item>
+        /// </list>
+        /// </remarks>
+        /// <returns>True if the app recorded the event.</returns>
+        public async Task<bool> SendEventAsync(string title, string detail, string category,
+                                               DateTime? when, CancellationToken token) {
+            if (string.IsNullOrWhiteSpace(title)) {
+                return false;
+            }
+
+            var payload = new Dictionary<string, object> { ["title"] = title.Trim() };
+            if (!string.IsNullOrWhiteSpace(detail)) { payload["detail"] = detail.Trim(); }
+            if (!string.IsNullOrWhiteSpace(category)) { payload["category"] = category.Trim(); }
+            if (when.HasValue) { payload["time"] = when.Value.ToString("yyyyMMdd-HHmmss"); }
+
+            try {
+                await PostAsync("/events", JsonConvert.SerializeObject(payload), token).ConfigureAwait(false);
+                return true;
+            } catch (OperationCanceledException) {
+                return false;  // sequence is stopping; nothing to report
+            } catch (RtspApiException ex) {
+                if (ex.StatusCode == 409) {
+                    return false;  // not capturing - the normal case, deliberately silent
+                }
+                if (ex.StatusCode == 404) {
+                    WarnOnce(ref versionWarningIssued,
+                        "Sending timelapse events needs RTSP Timelapse 3.6.0 or newer. " +
+                        "Events will be skipped until the app is updated.");
+                } else {
+                    WarnOnce(ref sendWarningIssued, $"Could not send timelapse event: {ex.Message}");
+                }
+                return false;
+            } catch (Exception ex) {
+                WarnOnce(ref sendWarningIssued, $"Could not send timelapse event: {ex.Message}");
+                return false;
+            }
+        }
+
+        // A sequence can generate many events a night. If the app is old or unreachable, every one
+        // of them would log the same line, so each distinct problem is reported once per process.
+        private static int versionWarningIssued;
+        private static int sendWarningIssued;
+
+        private static void WarnOnce(ref int flag, string message) {
+            if (Interlocked.Exchange(ref flag, 1) == 0) {
+                Logger.Warning(message);
+            }
         }
 
         private async Task<string> GetAsync(string path, CancellationToken token) {

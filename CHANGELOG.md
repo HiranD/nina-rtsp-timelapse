@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.5.0
+
+- **New: Report Timelapse Events trigger.** Add it to a sequence and the plugin tells the RTSP
+  Timelapse app what's happening during the night, so the app can burn the events onto the finished
+  timelapse as captions at the moment they occurred. Adding the trigger to a sequence is the
+  opt-in; *which* events it reports is chosen on the plugin's options page — one toggle per event
+  type, saved per profile and applied immediately, even mid-sequence. Target changes, the meridian
+  flip and centering are on by default; everything else is opt-in. It can report:
+  - **Sequence instructions** as they finish — autofocus, plate solves, dome shutter, find home,
+    park/unpark, camera cool/warm — each type with its own toggle. Routine exposures and dithers
+    are deliberately ignored, otherwise a night's captions would bury the video.
+  - **Filter changes by name** — "Filter: Ha" rather than "Switch Filter", read from the filter
+    wheel as the switch completes, and skipped when the same filter is re-selected. Filter switches
+    are the most frequent reportable instruction (38 of 63 events on a test night, one every few
+    minutes as the rotation cycles), so naming the filter is what earns them the space.
+  - **Meridian flip**, start and finish. This watches the flip *trigger* rather than the
+    instructions inside it, so it works with N.I.N.A.'s built-in flip and with DIY flip triggers
+    alike.
+  - **Target changes**, e.g. "Target: M31" — sent once when the target actually changes, not once
+    per instruction.
+  - **Guiding lost / resumed**, with the current RMS error.
+- When several events land on the same sequence boundary — e.g. a Center instruction finishing is
+  also the moment a new target is detected — every one of them is reported, in a sensible order,
+  rather than only the most important.
+- Instructions that N.I.N.A. runs *from a trigger* — auto-dither, autofocus-after-HFR-increase, the
+  instructions inside a DIY meridian flip — execute outside the normal sequence flow, so they can't
+  be captioned individually. The meridian flip is covered by watching its trigger; the others are
+  not reported.
+- Event sending can never fail a sequence. When the app isn't capturing there are no frames to
+  attach events to, so those sends are skipped silently; an unreachable app or any other error is
+  logged once and dropped.
+- Requires **RTSP Timelapse Capture 3.6.0 or newer** for the events feature. Against an older app
+  the plugin says so once in the log and carries on — nothing else in the plugin is affected.
+
 ## 1.4.1
 
 - **Fixed: Scheduled Timelapse could fail with "stop_at is in the past."** When armed in the

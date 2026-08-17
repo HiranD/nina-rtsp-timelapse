@@ -1,7 +1,19 @@
 <ResourceDictionary
     x:Class="NINA.RtspTimelapse.Plugin.Options"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:NINA.RtspTimelapse.Plugin">
+
+    <!-- One session-event checkbox. Implicit by type so both ItemsControls below share it;
+         the type appears nowhere else, so the app-wide scope of a merged dictionary is fine.
+         As elsewhere in this plugin, NINA hides a CheckBox's Content, hence CheckBox + TextBlock. -->
+    <DataTemplate DataType="{x:Type local:SessionEventToggleViewModel}">
+        <StackPanel Orientation="Horizontal" Margin="0,2,12,2" ToolTip="{Binding ToolTip}"
+                    ToolTipService.ShowDuration="20000">
+            <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" Margin="6,0,0,0" />
+        </StackPanel>
+    </DataTemplate>
 
     <!-- Key must be "<AssemblyTitle>_Options" so N.I.N.A. shows it on the plugin's options page.
          DataContext is the RtspTimelapsePlugin instance. -->
@@ -31,7 +43,7 @@
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
                            Text="• Video Export tab → pick a preset and set the output location (where the timelapse videos are saved)." />
                 <TextBlock TextWrapping="Wrap" Opacity="0.85" Margin="0,1"
-                           Text="• Optional: Integrations tab → Discord webhook to auto-upload each finished video." />
+                           Text="• Optional: Integrations tab → set up delivery to send each finished video automatically." />
             </StackPanel>
 
             <!-- Which block to use. -->
@@ -43,10 +55,36 @@
                            Text="• Scheduled Timelapse — capture until a chosen time (e.g. Nautical Dawn), then auto-stop and render. No Stop block needed. Non-blocking: it hands the stop time to the app and the sequence continues immediately — the app stops and renders at that time even if the sequence has moved on or been stopped." />
             </StackPanel>
 
+            <!-- Per-event-type selection for the Report Timelapse Events trigger. The trigger
+                 reads these live, so changes apply immediately - even mid-sequence. -->
+            <Separator Margin="0,12,0,8" Opacity="0.3" />
+            <TextBlock Text="Session events" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,3" />
+            <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                       Text="What the Report Timelapse Events trigger sends to the app for captioning. Saved per profile; changes apply immediately, even while a sequence is running." />
+            <!-- MaxWidth matters: an unconstrained UniformGrid stretches its two equal columns
+                 across the whole options page. -->
+            <StackPanel Orientation="Vertical" Margin="8,4,0,0" TextElement.FontSize="12"
+                        HorizontalAlignment="Left" MaxWidth="560">
+                <ItemsControl ItemsSource="{Binding StateEventToggles}" Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding InstructionEventToggles}" Margin="0,6,0,0" Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="2" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+            </StackPanel>
+
             <!-- About the app (this Plugins tab is the main way people discover it). -->
             <Separator Margin="0,12,0,8" Opacity="0.3" />
             <TextBlock TextWrapping="Wrap" FontSize="12"
-                       Text="RTSP Timelapse Capture is a free, open-source Windows app that records timelapses from any RTSP / IP camera — with smart overnight / twilight scheduling, one-click MP4 export, and automatic Discord upload. This plugin lets N.I.N.A. start/stop capture and render the video as part of your sequence." />
+                       Text="RTSP Timelapse Capture is a free, open-source Windows app that records timelapses from any RTSP / IP camera — with smart overnight / twilight scheduling, one-click MP4 export, and automatic delivery of each finished video. This plugin lets N.I.N.A. start/stop capture and render the video as part of your sequence." />
             <TextBlock Margin="0,6,0,0" FontSize="12">
                 <Hyperlink NavigateUri="https://github.com/HiranD/RTSP-Timelapse-Capture"
                            RequestNavigate="Hyperlink_RequestNavigate">Get the RTSP Timelapse Capture app →</Hyperlink>

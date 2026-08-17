@@ -35,7 +35,7 @@
         <nina:SequenceBlockView DataContext="{Binding}">
             <nina:SequenceBlockView.SequenceItemContent>
                 <StackPanel Orientation="Horizontal" Margin="0,1"
-                            ToolTip="After stopping, render the timelapse video for this session (only its frames) and auto-upload to Discord if configured in the app.">
+                            ToolTip="After stopping, render the timelapse video for this session (only its frames) and deliver it however the app is configured.">
                     <CheckBox IsChecked="{Binding CreateVideoAfterStop}" VerticalAlignment="Center" />
                     <TextBlock Text="Create video when finished" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
@@ -77,7 +77,7 @@
                         <TextBlock Text="Wait for capture to start" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,1"
-                                ToolTip="At the target time the app renders this session's timelapse video (uploads to Discord if configured). The app stops + renders even if the NINA sequence was stopped.">
+                                ToolTip="At the target time the app renders this session's timelapse video (and delivers it, if configured). The app stops + renders even if the NINA sequence was stopped.">
                         <CheckBox IsChecked="{Binding CreateVideoWhenDone}" VerticalAlignment="Center" />
                         <TextBlock Text="Create video when finished" VerticalAlignment="Center" Margin="6,0,0,0" />
                     </StackPanel>

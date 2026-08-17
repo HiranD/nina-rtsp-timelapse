@@ -1,0 +1,31 @@
+<ResourceDictionary
+    x:Class="NINA.RtspTimelapse.Plugin.Triggers.TriggerTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:NINA.RtspTimelapse.Plugin.Triggers"
+    xmlns:mini="clr-namespace:NINA.View.Sequencer.MiniSequencer;assembly=NINA.Sequencer"
+    xmlns:nina="clr-namespace:NINA.View.Sequencer;assembly=NINA.Sequencer">
+
+    <!-- Report Timelapse Events. The per-event-type selection lives on the plugin's options
+         page (SessionEventCatalog), not on the block - one selection for every sequence,
+         applied immediately, instead of a stale copy serialised into each saved sequence. -->
+    <DataTemplate DataType="{x:Type local:ReportTimelapseEvents}">
+        <nina:SequenceBlockView DataContext="{Binding}">
+            <nina:SequenceBlockView.SequenceItemContent>
+                <TextBlock VerticalAlignment="Center" Opacity="0.8" TextWrapping="Wrap"
+                           Text="Reports session events to the RTSP Timelapse app. Choose which events under Options → Plugins → RTSP Timelapse Control." />
+            </nina:SequenceBlockView.SequenceItemContent>
+        </nina:SequenceBlockView>
+    </DataTemplate>
+
+    <!-- Compact view used by the mini sequencer on the imaging tab. -->
+    <DataTemplate x:Key="NINA.RtspTimelapse.Plugin.Triggers.ReportTimelapseEvents_Mini">
+        <mini:MiniTrigger>
+            <mini:MiniTrigger.TriggerProgressContent>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" Text="Reporting timelapse events" />
+                </StackPanel>
+            </mini:MiniTrigger.TriggerProgressContent>
+        </mini:MiniTrigger>
+    </DataTemplate>
+</ResourceDictionary>

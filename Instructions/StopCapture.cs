@@ -33,7 +33,7 @@ namespace NINA.RtspTimelapse.Plugin.Instructions {
 
         /// <summary>
         /// When true, render the timelapse video after stopping - only this session's frames, using
-        /// the session start the app reports on /status. The app uploads to Discord too, if configured.
+        /// the session start the app reports on /status. The app delivers the video too, if configured.
         /// </summary>
         [JsonProperty]
         public bool CreateVideoAfterStop {

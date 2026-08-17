@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Runtime.CompilerServices;
@@ -26,6 +27,33 @@ namespace NINA.RtspTimelapse.Plugin {
         public RtspTimelapsePlugin(IProfileService profileService, IOptionsVM options) {
             pluginSettings = new PluginOptionsAccessor(profileService, PluginConstants.PluginId);
             TestConnectionCommand = new AsyncCommand<bool>(TestConnectionAsync);
+
+            StateEventToggles = BuildToggles(SessionEventCatalog.StateToggles);
+            InstructionEventToggles = BuildToggles(SessionEventCatalog.InstructionToggles);
+
+            // The options page stays open across profile switches. The accessor always writes to
+            // the ACTIVE profile, so without this refresh the controls would display the old
+            // profile's values while clicks silently write to the new one.
+            profileService.ProfileChanged += (s, e) => {
+                RaisePropertyChanged(nameof(Port));
+                RaisePropertyChanged(nameof(BaseUrl));
+                foreach (var toggle in StateEventToggles) { toggle.RefreshFromProfile(); }
+                foreach (var toggle in InstructionEventToggles) { toggle.RefreshFromProfile(); }
+            };
+        }
+
+        /// <summary>Session-event checkboxes for the options page - see SessionEventCatalog.</summary>
+        public IReadOnlyList<SessionEventToggleViewModel> StateEventToggles { get; }
+
+        public IReadOnlyList<SessionEventToggleViewModel> InstructionEventToggles { get; }
+
+        private IReadOnlyList<SessionEventToggleViewModel> BuildToggles(
+                IReadOnlyList<SessionEventToggle> descriptors) {
+            var items = new List<SessionEventToggleViewModel>(descriptors.Count);
+            foreach (var descriptor in descriptors) {
+                items.Add(new SessionEventToggleViewModel(descriptor, pluginSettings));
+            }
+            return items;
         }
 
         /// <summary>API port; must match the RTSP Timelapse app's Integrations tab.</summary>
